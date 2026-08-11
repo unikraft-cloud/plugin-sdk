@@ -25,10 +25,22 @@ tasks:
   - task: golang:default
   - task: sdkgen:default
 
+  sdkgen-examples-check:
+    desc: "Verify go/tools/sdkgen/examples is regenerated from its upstream spec"
+    dir: go/tools/sdkgen/examples
+    env:
+      GOWORK: ""
+    cmds:
+    - go generate ./...
+    - go build ./...
+    - git add -A -- .
+    - git diff --cached --exit-code -- .
+
   # ci tasks
 
   ci/check:
   - task: golang:go:ci/check
+  - task: sdkgen-examples-check
 
   ci/test:
   - task: golang:go:ci/test

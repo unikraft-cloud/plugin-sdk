@@ -5,6 +5,9 @@ dist/
 openapi.yaml
 .omo/
 
+# Fetched from upstream by `go generate`; see go/tools/sdkgen/examples/generate.go.
+/go/tools/sdkgen/examples/api.yaml
+
 # JUnit reports written by the `ci/check` and `ci/test` tasks.
 lint-results.xml
 test-results.xml
