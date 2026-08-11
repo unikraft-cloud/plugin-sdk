@@ -417,3 +417,120 @@ func (r *Response[T]) transportErr() error {
 
 	return fmt.Errorf("request failed: %s", r.raw.Status)
 }
+
+{{- /* Readiness.
+
+       A plugin is loaded inside an instance and only answers once its own
+       server is up, so a client that calls it right after the instance starts
+       has to establish that for itself.  A spec names the operation to probe
+       for it by carrying the x-unikraft-plugin-readiness extension on that
+       operation, and the two helpers below are rendered against it.
+
+       The probe has to be callable with nothing but the instance, so an
+       operation with a required parameter or a required body cannot be one;
+       that is an error in the spec rather than something to render around.
+       Optional parameters and an optional body are passed as nil. */ -}}
+{{- $readyOp := "" -}}
+{{- $readyBody := false -}}
+{{- $readyParams := false -}}
+{{- range $pathOp := .Operations -}}
+{{- $op := $pathOp.Operation -}}
+{{- if index $op.Extensions "x-unikraft-plugin-readiness" -}}
+{{- if $readyOp -}}
+{{- fail (printf "operations %s and %s both carry x-unikraft-plugin-readiness; a plugin has one readiness probe" $readyOp $op.OperationID) -}}
+{{- end -}}
+{{- range $op.Parameters -}}
+{{- if .Value.Required -}}
+{{- fail (printf "operation %s carries x-unikraft-plugin-readiness but takes required parameter %q; a readiness probe must be callable with nothing but the instance" $op.OperationID .Value.Name) -}}
+{{- else -}}
+{{- $readyParams = true -}}
+{{- end -}}
+{{- end -}}
+{{- if $op.RequestBody -}}
+{{- if $op.RequestBody.Value -}}
+{{- if $op.RequestBody.Value.Required -}}
+{{- fail (printf "operation %s carries x-unikraft-plugin-readiness but requires a request body; a readiness probe must be callable with nothing but the instance" $op.OperationID) -}}
+{{- end -}}
+{{- with $op.RequestBody.Value.Content.Get "application/json" -}}
+{{- if .Schema -}}
+{{- $readyBody = true -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+{{- $readyOp = $op.OperationID -}}
+{{- end -}}
+{{- end }}
+{{- if $readyOp }}
+
+// ReadinessOperation is the operation Ready probes: the one the specification
+// marked as this plugin's readiness probe.
+const ReadinessOperation = "{{ $readyOp }}"
+
+const (
+	// readyFirstInterval is how long WaitReady waits before its second attempt.
+	readyFirstInterval = 250 * time.Millisecond
+
+	// readyMaxInterval is the longest WaitReady waits between two attempts.
+	readyMaxInterval = 2 * time.Second
+)
+
+// Ready reports whether the plugin is up and serving on the given instance, by
+// calling {{ pascalcase $readyOp }} and returning what it answered.
+//
+// A plugin runs inside its instance, so it only answers while that instance is
+// running, and a request that arrives before its server is up fails like any
+// other failed call.  Any error therefore means "not serving": either not yet,
+// or not any more.  Use WaitReady to wait for it to become ready.
+func (c *Client) Ready(ctx context.Context, instance platform.Instance, opts ...Option) error {
+	_, err := c.{{ pascalcase $readyOp }}(ctx, instance{{ if $readyBody }}, nil{{ end }}{{ if $readyParams }}, nil{{ end }}, opts...)
+
+	return err
+}
+
+// WaitReady blocks until the plugin answers Ready on the given instance, or
+// until timeout elapses or ctx is cancelled.
+//
+// It retries with a backoff that starts at readyFirstInterval and settles at
+// readyMaxInterval, so a plugin that comes up quickly is not waited on longer
+// than it takes, and one that never comes up is not hammered.  A timeout of
+// zero or less makes exactly one attempt.
+//
+// The error a timeout returns wraps the last failure, which is the plugin's own
+// account of why it did not answer.  A plugin that never answers is often an
+// instance that is no longer running: the plugin cannot report that, so a caller
+// that wants to tell the two apart reads the instance's state through the
+// platform API.
+func (c *Client) WaitReady(ctx context.Context, instance platform.Instance, timeout time.Duration, opts ...Option) error {
+	deadline := time.Now().Add(timeout)
+	interval := readyFirstInterval
+
+	for attempt := 1; ; attempt++ {
+		err := c.Ready(ctx, instance, opts...)
+		if err == nil {
+			return nil
+		}
+		if ctxErr := ctx.Err(); ctxErr != nil {
+			return ctxErr
+		}
+
+		if !time.Now().Before(deadline) {
+			return fmt.Errorf("plugin %q on instance %s did not answer within %s (%d attempts): %w",
+				c.resolve(opts...).pluginName, instance.Uuid, timeout, attempt, err)
+		}
+
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(interval):
+		}
+
+		if interval < readyMaxInterval {
+			interval *= 2
+			if interval > readyMaxInterval {
+				interval = readyMaxInterval
+			}
+		}
+	}
+}
+{{- end }}

@@ -96,6 +96,50 @@ The Go package name is derived from it by dropping characters that are illegal
 in an identifier (`example-go` becomes `examplego`); override with `--package`.
 Override the module path itself with `--module`.
 
+## Readiness
+
+A plugin runs *inside* an instance and only answers once its own server is up,
+so a client that calls it right after the instance starts has to establish that
+for itself. A spec can name the operation to probe for it by carrying
+`x-unikraft-plugin-readiness: true` **on that operation**:
+
+```tsp
+@returnsDoc("The UUIDs of all known commands.")
+@get
+@summary("List Commands")
+@operationId("ListCommands")
+@extension("x-unikraft-plugin-readiness", true)
+listCommands(): ListCommandsResponse;
+```
+
+Two helpers are then rendered into `client.gen.go`, alongside a
+`ReadinessOperation` constant naming the operation they call:
+
+```go
+// one probe: nil when the plugin answered, the call's error otherwise
+func (c *Client) Ready(ctx context.Context, instance platform.Instance, opts ...Option) error
+
+// polls Ready with a backoff (250ms, doubling, capped at 2s) until it answers,
+// timeout elapses, or ctx is cancelled
+func (c *Client) WaitReady(ctx context.Context, instance platform.Instance, timeout time.Duration, opts ...Option) error
+```
+
+The probe must be callable with nothing but the instance, so `sdkgen` **fails**
+rather than rendering around a spec that marks:
+
+- an operation with a required parameter, or one that requires a request body —
+  there is nothing for the helper to pass;
+- more than one operation — a plugin has one readiness probe.
+
+Optional parameters and an optional request body are fine; the helpers pass
+`nil` for them. A spec that marks nothing simply gets no helpers, so this is
+backwards compatible with every existing plugin.
+
+`Ready` reports only whether the *plugin* answered. It cannot report the usual
+reason a plugin never does — the instance is no longer running, so there is
+nothing inside it left to answer — so a caller that wants to distinguish the two
+reads the instance's state through the platform API when `WaitReady` gives up.
+
 ## Versioning
 
 Published SDKs are pseudo-versions derived from the spec, never from wall-clock
@@ -286,7 +330,7 @@ Rendered from the templates in [`templates/`](templates) (embedded via
 
 | File              | Contents                                                         |
 | ----------------- | ---------------------------------------------------------------- |
-| `client.gen.go`   | `Client`, `Option`s and the transport: endpoint/token derivation |
+| `client.gen.go`   | `Client`, `Option`s, the transport: endpoint/token derivation, and the readiness helpers |
 | `api.gen.go`      | one method per OpenAPI operation, taking a `platform.Instance`   |
 | `response.gen.go` | the generic `Response[T]` envelope                               |
 | `model.gen.go`    | request/response models and enums                                |
