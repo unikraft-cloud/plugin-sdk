@@ -13,6 +13,10 @@ includes:
     taskfile: ./go/Taskfile.yml
     dir: ./go
 
+  sdkgen:
+    taskfile: ./go/tools/sdkgen/Taskfile.yml
+    dir: ./go/tools/sdkgen
+
 env:
   GOWORK: "off"
 
