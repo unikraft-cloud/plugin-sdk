@@ -511,16 +511,3 @@ and adopted descriptor, which is why the context helpers work inside handlers.
 On cancellation it calls `server.Shutdown` with a `ShutdownTimeout` (30s) budget
 derived from a cancel-free copy of the base context, so in-flight requests get
 the full window to drain.
-
-## Known gaps
-
-- **The responder seam is not wired up.** `WithResponder` stores a
-  `func(*gin.Context, int, any)` that nothing reads, and there is no
-  `framework.Respond`. Generated services must be passed a responder directly.
-- **No tests.** The Go SDK has no test coverage. The configuration precedence
-  (`default:` < `STDIN` < env < flag) is the highest-value behaviour to cover
-  first.
-- **No `logbuf`.** The TypeScript SDK ships a subscribable in-memory log buffer
-  for server-sent-event endpoints; the Go SDK has no equivalent yet.
-- **`Error` can emit status `0`.** Passing a non-positive `status` produces an
-  envelope and status code of `0`, which gin rejects.
