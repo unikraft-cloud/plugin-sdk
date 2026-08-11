@@ -3,14 +3,14 @@ module unikraft.com/cloud/pluginsdk/tools/sdkgen
 go 1.26.4
 
 require (
-	github.com/alecthomas/kong v1.15.0
+	github.com/alecthomas/kong v1.16.0
 	github.com/juju/errors v1.0.0
 	golang.org/x/mod v0.38.0
 	gopkg.in/yaml.v3 v3.0.1
 	unikraft.com/x/kingkong v0.0.0-20260713183529-fd34645687a0
-	unikraft.com/x/log v0.0.0-20260707132925-9125828ba02b
-	unikraft.com/x/tools/openapi-gen v0.0.0-20260715002733-abd1f3dee0e2
-	unikraft.com/x/version v0.0.0-20260707132925-9125828ba02b
+	unikraft.com/x/log v0.0.0-20260811021335-23b51b9e5a8a
+	unikraft.com/x/tools/openapi-gen v0.0.0-20260811021335-23b51b9e5a8a
+	unikraft.com/x/version v0.0.0-20260811021335-23b51b9e5a8a
 )
 
 require (
@@ -35,11 +35,11 @@ require (
 	github.com/cyphar/filepath-securejoin v0.7.0 // indirect
 	github.com/emirpasic/gods v1.18.1 // indirect
 	github.com/ettle/strcase v0.2.0 // indirect
-	github.com/getkin/kin-openapi v0.141.0 // indirect
+	github.com/getkin/kin-openapi v0.146.0 // indirect
 	github.com/go-git/gcfg v1.5.1-0.20230307220236-3a3c6141e376 // indirect
 	github.com/go-git/go-billy/v5 v5.9.0 // indirect
-	github.com/go-git/go-git/v5 v5.19.1 // indirect
-	github.com/go-logr/logr v1.4.3 // indirect
+	github.com/go-git/go-git/v5 v5.19.2 // indirect
+	github.com/go-logr/logr v1.4.4 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-openapi/jsonpointer v1.0.0 // indirect
 	github.com/golang/groupcache v0.0.0-20241129210726-2c02b8208cf8 // indirect
@@ -70,10 +70,10 @@ require (
 	github.com/xanzy/ssh-agent v0.3.3 // indirect
 	github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
-	go.opentelemetry.io/otel v1.43.0 // indirect
-	go.opentelemetry.io/otel/log v0.19.0 // indirect
-	go.opentelemetry.io/otel/metric v1.43.0 // indirect
-	go.opentelemetry.io/otel/trace v1.43.0 // indirect
+	go.opentelemetry.io/otel v1.45.0 // indirect
+	go.opentelemetry.io/otel/log v0.20.0 // indirect
+	go.opentelemetry.io/otel/metric v1.45.0 // indirect
+	go.opentelemetry.io/otel/trace v1.45.0 // indirect
 	golang.org/x/crypto v0.54.0 // indirect
 	golang.org/x/net v0.57.0 // indirect
 	golang.org/x/sync v0.22.0 // indirect
