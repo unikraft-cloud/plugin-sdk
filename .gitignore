@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.task/
+.unikraft/
+openapi.yaml
+.omo/
+
+# JUnit reports written by the `ci/check` and `ci/test` tasks.
+lint-results.xml
+test-results.xml
