@@ -1,4 +1,7 @@
 go 1.26.4
 
-// This list is alphabetically sorted.
-use ./go
+use (
+	// This list is alphabetically sorted.
+	./go
+	./go/tools/sdkgen
+)
