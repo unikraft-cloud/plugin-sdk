@@ -49,7 +49,7 @@ concepts below map onto that language's idioms.
 	- [Scale-to-zero](#scale-to-zero)
 	- [Logging](#logging)
 	- [Project layout](#project-layout)
-	- [9. Building \& packaging](#9-building--packaging)
+	- [Building \& packaging](#building--packaging)
 		- [`Dockerfile`](#dockerfile)
 		- [`Kraftfile`](#kraftfile)
 	- [Deploying](#deploying)
@@ -110,7 +110,7 @@ path. A request to `.../plugins/my-plugin/files/list` arrives at your plugin as
   group in the path.
 - **Works with scale-to-zero.** An idle instance is woken to serve a plugin
   request. Long-running work should hold the instance awake explicitly (see
-  [§6](#6-scale-to-zero)).
+  [scale-to-zero](#scale-to-zero)).
 - **Reloaded across the lifecycle.** Plugins return with the instance after
   scale-to-zero, suspend, or restart, and are inherited by clones, branches,
   forks, checkpoints, and on-demand templates.
@@ -178,14 +178,14 @@ Concretely, each SDK owns:
   flag.
 - **Configuration decoding** — reads the JSON `config` from `STDIN` and merges it
   with environment variables and command-line flags into one typed value
-  ([§3](#3-configuration)).
+  (see [configuration](#configuration)).
 - **Socket adoption** — turns the `--api_fd` file descriptor into a listening
   server so you serve exactly where the platform expects.
 - **HTTP routing** with a default middleware stack: CORS, static headers, request
   logging, and cache control.
 - **Lifecycle** — `SIGINT`/`SIGTERM` handling, startup, graceful drain.
-- **Batteries** — the standard response envelope ([§4](#4-responses)) and a
-  scale-to-zero helper ([§6](#6-scale-to-zero)).
+- **Batteries** — the standard response envelope (see [responses](#responses)) and a
+  scale-to-zero helper (see [scale-to-zero](#scale-to-zero)).
 
 The two SDKs share this model but not their identifiers; each language uses its
 own idioms. Where a name differs it is called out in that language's guide.
@@ -361,7 +361,7 @@ For a trivial plugin, the entrypoint plus `Dockerfile` and `Kraftfile` is enough
 
 ---
 
-## 9. Building & packaging
+## Building & packaging
 
 The deliverable is a ROM image containing a single `init` executable at its
 root. The platform appends `--api_fd <n>` and pipes the `config` JSON to `STDIN`
