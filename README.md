@@ -386,17 +386,15 @@ The build stage differs per language — see the language guides.
 
 ### `Kraftfile`
 
-A plugin ships as a **rootfs-only ROM** — it carries no kernel of its own.  The
-platform mounts it at `/uk/plugins/<name>` inside the host instance and runs its
-`init`.  Declare only a `rootfs` (built as `erofs`) and do **not** set a
-`runtime`:
+A plugin ships as a **ROM** which carries no kernel of its own.  The platform
+mounts it at `/uk/plugins/<name>` inside the host instance and runs its `init`.
+Declare only via `roms` (built as `erofs`) and do **not** set a `runtime`:
 
 ```yaml
 spec: v0.7
 
-rootfs:
-  source: ./Dockerfile
-  format: erofs
+roms:
+- ./Dockerfile
 ```
 
 > The platform runs the image's `init` and appends `--api_fd`; it does not use a
