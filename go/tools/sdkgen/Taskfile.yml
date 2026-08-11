@@ -1,0 +1,17 @@
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright (c) 2026, Unikraft GmbH.  All rights reserved.
+
+version: 3
+
+includes:
+  go:
+    taskfile: https://github.com/unikraft-cloud/x.git//Taskfile.go.yml?ref=prod-staging
+    vars:
+      # setup common variables that should apply to all tasks
+      go_module: unikraft.com/cloud/pluginsdk/tools/sdkgen
+
+tasks:
+  default:
+    cmds:
+    - task: go:static-check
+    - task: go:test
