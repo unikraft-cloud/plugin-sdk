@@ -3,7 +3,7 @@
 A small, opinionated SDK for building **Unikraft Cloud plugins** in Go.
 
 You write a **configuration struct** and a **route registration function**;
-`framework.Main` does the rest. A complete plugin is ~25 lines.
+`pluginsdk.Main` does the rest. A complete plugin is ~25 lines.
 
 > **Read [the top-level README](../README.md) first.** It covers the platform
 > contract, the configuration precedence model, the response envelope, the
@@ -71,7 +71,7 @@ func main() {
 }
 ```
 
-That is the entire plugin. `framework.Main`:
+That is the entire plugin. `pluginsdk.Main`:
 
 1. parses the command line (`--api_fd`, `--api-addr`, `--log-level`,
    `--log-type`, `--greeting`),
@@ -147,7 +147,7 @@ described in [the top-level README](../README.md#3-configuration). Non-object
 config is retrieved verbatim:
 
 ```go
-raw := framework.RawConfig(ctx) // []byte, exactly as delivered on STDIN
+raw := pluginsdk.RawConfig(ctx) // []byte, exactly as delivered on STDIN
 ```
 
 [kong]: https://github.com/alecthomas/kong
@@ -194,7 +194,7 @@ Before your routes run, the SDK installs a global middleware stack from
 Add your own, or replace the defaults entirely:
 
 ```go
-framework.Main(&framework.Plugin[Config]{
+pluginsdk.Main(&pluginsdk.Plugin[Config]{
 	Name:       "example",
 	Register:   register,
 	Middleware: []gin.HandlerFunc{myMiddleware()}, // appended to defaults
@@ -218,9 +218,9 @@ Register: func(ctx context.Context, cfg *Config, engine *gin.Engine) error {
 }
 ```
 
-`framework.OK` and `framework.Error` return the `(payload, status, error)` triple
-that the generated handler methods are expected to produce, so a handler method
-body is usually a single `return framework.OK(&data)`.
+`pluginsdk.OK` and `pluginsdk.Error` return the `(payload, status, error)`
+triple that the generated handler methods are expected to produce, so a handler
+method body is usually a single `return pluginsdk.OK(&data)`.
 
 [typespec]: https://typespec.io
 [middleware]: https://unikraft.com/x/middleware
@@ -236,16 +236,16 @@ define its own envelope type. Two helpers construct it:
 
 ```go
 // Success. Note OK takes a *pointer* and returns three values.
-env, code, _ := framework.OK(&data)
+env, code, _ := pluginsdk.OK(&data)
 g.JSON(code, env)
 
 // Error.
-env, code, _ := framework.Error[any](http.StatusBadRequest, "bad input")
+env, code, _ := pluginsdk.Error[any](http.StatusBadRequest, "bad input")
 g.JSON(code, env)
 ```
 
 The three-value `(envelope, status, error)` shape exists so a generated service
-handler can `return framework.OK(&data)` directly. In a hand-written gin handler
+handler can `return pluginsdk.OK(&data)` directly. In a hand-written gin handler
 you destructure it as above.
 
 > `Error` derives the HTTP status from its `status` argument; passing a
@@ -321,7 +321,7 @@ source code.
 | `WithResponder(fn func(*gin.Context, int, any))` | Set a custom envelope responder ¹             |
 
 > ¹ `WithResponder` currently stores the responder but nothing in the SDK reads
-> it — there is no `framework.Respond`. Until the responder seam is wired up,
+> it — there is no `pluginsdk.Respond`. Until the responder seam is wired up,
 > pass your own function directly to generated services. See
 > [§9](#known-gaps).
 
@@ -377,12 +377,12 @@ defer scaletozero.Decrement()
 ### Bring your own kong grammar (subcommands)
 
 `Main` covers the common case: one plugin, one server. Plugins that need a
-richer command line define their own kong grammar and call `framework.Serve`
+richer command line define their own kong grammar and call `pluginsdk.Serve`
 from the subcommand's `Run`:
 
 ```go
 type CLI struct {
-	framework.Options // --api_fd, --api-addr, --log-level, --log-type
+	pluginsdk.Options // --api_fd, --api-addr, --log-level, --log-type
 
 	Config Config `embed:""`
 
@@ -398,9 +398,9 @@ func (c *RunCmd) Run(ctx context.Context, cli *CLI, raw rawConfig) error {
 		return err
 	}
 
-	return framework.Serve(ctx, &cli.Config, register,
-		framework.WithOptions(cli.Options),
-		framework.WithRawConfig(raw),
+	return pluginsdk.Serve(ctx, &cli.Config, register,
+		pluginsdk.WithOptions(cli.Options),
+		pluginsdk.WithRawConfig(raw),
 	)
 }
 ```
@@ -417,7 +417,7 @@ func main() {
 		syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
 
-	raw := framework.ReadConfig(os.Stdin)
+	raw := pluginsdk.ReadConfig(os.Stdin)
 
 	var cli CLI
 
@@ -427,7 +427,7 @@ func main() {
 		kong.BindTo(ctx, (*context.Context)(nil)),
 		kong.Bind(rawConfig(raw)),
 	}
-	if resolver, ok := framework.NewConfigResolver[Config](raw); ok {
+	if resolver, ok := pluginsdk.NewConfigResolver[Config](raw); ok {
 		opts = append(opts, kong.Resolvers(resolver))
 	}
 
@@ -436,7 +436,7 @@ func main() {
 }
 ```
 
-`framework.Options` contributes the standard global flags, and `WithOptions`
+`pluginsdk.Options` contributes the standard global flags, and `WithOptions`
 feeds them to `Serve`, so you get the same listener selection and logging as
 `Main` with your own command tree on top.
 
@@ -455,7 +455,7 @@ is never a mystery.
 
 ### Command line (kong)
 
-`Main` builds a kong grammar from a root struct that embeds `framework.Options`
+`Main` builds a kong grammar from a root struct that embeds `pluginsdk.Options`
 (the global flags) and your `Config`:
 
 ```go
@@ -511,16 +511,3 @@ and adopted descriptor, which is why the context helpers work inside handlers.
 On cancellation it calls `server.Shutdown` with a `ShutdownTimeout` (30s) budget
 derived from a cancel-free copy of the base context, so in-flight requests get
 the full window to drain.
-
-## Known gaps
-
-- **The responder seam is not wired up.** `WithResponder` stores a
-  `func(*gin.Context, int, any)` that nothing reads, and there is no
-  `framework.Respond`. Generated services must be passed a responder directly.
-- **No tests.** The Go SDK has no test coverage. The configuration precedence
-  (`default:` < `STDIN` < env < flag) is the highest-value behaviour to cover
-  first.
-- **No `logbuf`.** The TypeScript SDK ships a subscribable in-memory log buffer
-  for server-sent-event endpoints; the Go SDK has no equivalent yet.
-- **`Error` can emit status `0`.** Passing a non-positive `status` produces an
-  envelope and status code of `0`, which gin rejects.
