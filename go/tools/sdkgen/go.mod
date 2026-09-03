@@ -9,7 +9,7 @@ require (
 	gopkg.in/yaml.v3 v3.0.1
 	unikraft.com/x/kingkong v0.0.0-20260713183529-fd34645687a0
 	unikraft.com/x/log v0.0.0-20260811021335-23b51b9e5a8a
-	unikraft.com/x/tools/openapi-gen v0.0.0-20260811021335-23b51b9e5a8a
+	unikraft.com/x/tools/openapi-gen v0.0.0-20260903102000-c4a61ca6aa52
 	unikraft.com/x/version v0.0.0-20260811021335-23b51b9e5a8a
 )
 

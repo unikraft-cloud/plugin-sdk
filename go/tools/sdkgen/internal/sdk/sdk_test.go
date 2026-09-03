@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -297,5 +298,90 @@ func TestPublishRejectsMissingGoMod(t *testing.T) {
 	})
 	if err == nil {
 		t.Fatal("Publish() accepted a module without a go.mod")
+	}
+}
+
+// unionSpec is a minimal specification whose single model carries an `anyOf`
+// property of two distinct shapes, plus the named array schema one of its
+// branches references.
+const unionSpec = `openapi: 3.0.0
+info:
+  title: Union
+  version: v1.0.0
+paths: {}
+components:
+  schemas:
+    ArgvSpec:
+      type: array
+      items:
+        type: string
+    RunRequest:
+      type: object
+      required: [cmd]
+      properties:
+        cmd:
+          anyOf:
+          - type: string
+          - $ref: '#/components/schemas/ArgvSpec'
+`
+
+// renderSpec renders spec and returns the generated model source.
+func renderSpec(t *testing.T, spec string) string {
+	t.Helper()
+
+	path := filepath.Join(t.TempDir(), "api.yaml")
+	if err := os.WriteFile(path, []byte(spec), filePerm); err != nil {
+		t.Fatal(err)
+	}
+
+	module, err := sdk.Render(t.Context(), sdk.Options{
+		SpecPath: path,
+		Module:   sdk.PublishedModulePath(pluginName),
+		Package:  pluginName,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, f := range module.Files {
+		if f.Name == "model.gen.go" {
+			return string(f.Data)
+		}
+	}
+
+	t.Fatal("no model.gen.go was rendered")
+
+	return ""
+}
+
+func TestRenderAnyOfPropertyAsUnion(t *testing.T) {
+	t.Parallel()
+
+	model := renderSpec(t, unionSpec)
+
+	for _, want := range []string{
+		"type ArgvUnion interface",
+		"func UnmarshalArgvUnion(v jsontext.Value) (ArgvUnion, error)",
+		"Cmd ArgvUnion `json:\"cmd\"`",
+	} {
+		if !strings.Contains(model, want) {
+			t.Errorf("model does not declare %q", want)
+		}
+	}
+
+	if strings.Contains(model, "interface{}") {
+		t.Error("an anyOf property was degraded to interface{}")
+	}
+}
+
+func TestRenderNonObjectSchemaAsDefinedType(t *testing.T) {
+	t.Parallel()
+
+	model := renderSpec(t, unionSpec)
+
+	// A named array schema is the type it encodes to, not a struct: rendering
+	// it as one leaves the union unable to decode the branch referencing it.
+	if want := "type ArgvSpec []string"; !strings.Contains(model, want) {
+		t.Errorf("model does not declare %q", want)
 	}
 }
