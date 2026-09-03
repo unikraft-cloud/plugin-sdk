@@ -373,3 +373,15 @@ func TestRenderAnyOfPropertyAsUnion(t *testing.T) {
 		t.Error("an anyOf property was degraded to interface{}")
 	}
 }
+
+func TestRenderNonObjectSchemaAsDefinedType(t *testing.T) {
+	t.Parallel()
+
+	model := renderSpec(t, unionSpec)
+
+	// A named array schema is the type it encodes to, not a struct: rendering
+	// it as one leaves the union unable to decode the branch referencing it.
+	if want := "type ArgvSpec []string"; !strings.Contains(model, want) {
+		t.Errorf("model does not declare %q", want)
+	}
+}
