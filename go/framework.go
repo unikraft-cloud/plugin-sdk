@@ -69,6 +69,14 @@ type RegisterFunc[C any] func(
 // code).  Returning an error aborts startup.
 type SetupFunc[C any] func(ctx context.Context, cfg *C) error
 
+// ShutdownFunc is an optional hook run once, after the server has stopped
+// accepting requests and drained the ones in flight, but before Main returns
+// and the process ends.  Use it to release what Register started and the
+// platform cannot see: a session with another service, a lease, a node
+// registration.  It shares the ShutdownTimeout budget with the drain, and ctx
+// is bound accordingly.  A returned error is logged, not fatal.
+type ShutdownFunc[C any] func(ctx context.Context, cfg *C) error
+
 // Plugin declares a plugin for the one-call Main entrypoint.
 type Plugin[C any] struct {
 	// Name is the plugin name, used in logs and diagnostics.  It does not affect
@@ -83,6 +91,9 @@ type Plugin[C any] struct {
 
 	// Setup is an optional pre-serve hook (see SetupFunc).
 	Setup SetupFunc[C]
+
+	// Shutdown is an optional post-drain hook (see ShutdownFunc).
+	Shutdown ShutdownFunc[C]
 
 	// Middleware is appended to the default stack (unless disabled below).
 	Middleware []gin.HandlerFunc
@@ -149,6 +160,12 @@ func run[C any](ctx context.Context, p *Plugin[C]) error {
 
 	if p.DisableDefaultMiddleware {
 		opts = append(opts, WithoutDefaultMiddleware())
+	}
+
+	if p.Shutdown != nil {
+		opts = append(opts, WithShutdown(func(ctx context.Context) error {
+			return p.Shutdown(ctx, &root.Config)
+		}))
 	}
 
 	s := newSettings(name, p.Version, opts)
@@ -278,6 +295,19 @@ func serve[C any](
 
 	if err := server.Shutdown(shutdownCtx); err != nil {
 		return fmt.Errorf("shutting down server: %w", err)
+	}
+
+	// The hook runs after the drain, on what is left of the same budget.
+	// Without it a plugin has no safe place for its own teardown: a goroutine
+	// watching ctx races the return from here, and a server that was idle
+	// when the signal arrived drains instantly, so that race is usually lost.
+	if s.shutdown != nil {
+		if err := s.shutdown(shutdownCtx); err != nil {
+			log.G(base).
+				Warn().
+				Err(err).
+				Msg("running the plugin shutdown hook")
+		}
 	}
 
 	return nil

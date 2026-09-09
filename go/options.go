@@ -4,6 +4,7 @@
 package pluginsdk
 
 import (
+	"context"
 	"net"
 
 	"github.com/gin-gonic/gin"
@@ -54,6 +55,8 @@ type settings struct {
 	responder        func(*gin.Context, int, any)
 
 	rawConfig []byte
+
+	shutdown func(context.Context) error
 }
 
 // Option customises Serve.  Options are applied in order, after any Options
@@ -102,6 +105,13 @@ func WithoutDefaultMiddleware() Option {
 // wherever a func(*gin.Context, int, any) is expected.
 func WithResponder(fn func(*gin.Context, int, any)) Option {
 	return func(s *settings) { s.responder = fn }
+}
+
+// WithShutdown runs fn once the server has stopped and drained, before Serve
+// returns.  It is the programmatic form of Plugin.Shutdown; see ShutdownFunc
+// for the contract.
+func WithShutdown(fn func(context.Context) error) Option {
+	return func(s *settings) { s.shutdown = fn }
 }
 
 // WithRawConfig supplies the raw platform config bytes (as delivered on STDIN)
