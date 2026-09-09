@@ -52,7 +52,7 @@ const DefaultJSONVersion = "v0.0.0-20260623181947-01eb4420fa68"
 // DefaultGoVersion is the go directive written into generated modules.  Like
 // the platform SDK version it is pinned, not taken from the toolchain that
 // built sdkgen, so that output does not vary between build machines.
-const DefaultGoVersion = "1.26.4"
+const DefaultGoVersion = "1.27.1"
 
 // DefaultVersion is the version a generated SDK reports in its User-Agent when
 // none was resolved for it — as when sources are rendered outside a
