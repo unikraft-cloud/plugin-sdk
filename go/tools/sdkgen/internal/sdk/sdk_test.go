@@ -38,7 +38,7 @@ func publishedAt() time.Time {
 
 // testModule returns a minimal rendered module to publish.
 func testModule(modPath string) *sdk.Module {
-	gomod := []byte("module " + modPath + "\n\ngo 1.26.4\n")
+	gomod := []byte("module " + modPath + "\n\ngo 1.27.1\n")
 
 	return &sdk.Module{
 		Path:  modPath,
@@ -117,7 +117,7 @@ func TestModulePathForDir(t *testing.T) {
 
 	root := t.TempDir()
 
-	gomod := "module example.com/app\n\ngo 1.26.4\n"
+	gomod := "module example.com/app\n\ngo 1.27.1\n"
 	if err := os.WriteFile(
 		filepath.Join(root, sdk.GoModFile), []byte(gomod), filePerm,
 	); err != nil {
