@@ -79,7 +79,8 @@ That is the entire plugin. `pluginsdk.Main`:
 3. configures logging and runs the optional `Setup` hook,
 4. adopts the `--api_fd` socket,
 5. builds the gin engine with default middleware and calls `Register`,
-6. serves until `SIGINT`/`SIGTERM`, then drains and shuts down.
+6. serves until `SIGINT`/`SIGTERM`, then drains, runs the optional `Shutdown`
+   hook, and returns.
 
 Run it locally with `--api-addr` instead of `--api_fd`:
 
@@ -286,6 +287,9 @@ type Plugin[C any] struct {
 	// Setup is an optional pre-serve hook (see SetupFunc).
 	Setup SetupFunc[C]
 
+	// Shutdown is an optional post-drain hook (see ShutdownFunc).
+	Shutdown ShutdownFunc[C]
+
 	// Middleware is appended to the default stack (unless disabled below).
 	Middleware []gin.HandlerFunc
 
@@ -295,17 +299,27 @@ type Plugin[C any] struct {
 }
 ```
 
-### `type RegisterFunc[C any]` and `type SetupFunc[C any]`
+### `type RegisterFunc[C any]`, `type SetupFunc[C any]` and `type ShutdownFunc[C any]`
 
 ```go
 type RegisterFunc[C any] func(ctx context.Context, cfg *C, engine *gin.Engine) error
 type SetupFunc[C any]    func(ctx context.Context, cfg *C) error
+type ShutdownFunc[C any] func(ctx context.Context, cfg *C) error
 ```
 
 `Register` attaches routes; returning a non-nil error aborts startup. `Setup` is
 an optional hook that runs once after configuration is resolved but before the
 server starts accepting requests — use it for one-time work such as fetching
-source code.
+source code. `Shutdown` is an optional hook that runs once after the server has
+stopped accepting requests and drained the ones in flight, but before `Main`
+returns — use it to release what `Register` started and the platform cannot see
+for you: a session with another service, a lease, a node registration. It runs
+on what is left of the `ShutdownTimeout` budget after the drain, and `ctx` is
+bound accordingly; a returned error is logged, not fatal.
+
+Do not tear down from a goroutine watching the base context instead: it races
+the return from `Main`, and a server that was idle when the signal arrived
+drains instantly, so that race is usually lost.
 
 ### Options (for `Serve`)
 
