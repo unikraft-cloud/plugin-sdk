@@ -1,0 +1,54 @@
+{{- $plugin := .Var "pluginName" "plugin" -}}
+{{- $tags := uniqueTags .Operations -}}
+{{- $class := printf "%sPluginApi" (pascalcase $plugin) -}}
+--- README.md
+# @unikraft/cloud-plugin-{{ $plugin }}-api
+
+The generated client for the Unikraft Cloud `{{ $plugin }}` plugin API. It is
+generated from the plugin's OpenAPI specification, so **do not edit it by
+hand**.
+
+This package is the raw ("plumbing") layer. Methods are named after their
+`operationId` and return the response envelope exactly as the specification
+describes it. If you want the idiomatic layer, use
+[`@unikraft/cloud`](https://www.npmjs.com/package/@unikraft/cloud), which wraps
+this package and creates the instance for you.
+
+## Install
+
+```sh
+npm install @unikraft/cloud-plugin-{{ $plugin }}-api @unikraft/cloud
+```
+
+`@unikraft/cloud` is a peer dependency, because the generated classes extend
+its `ApiClient` transport.
+
+## Usage
+
+The plugin runs inside a single instance and answers on that instance's plugin
+route, so `baseUrl` is the full plugin endpoint rather than a metro root.
+
+```ts
+import { {{ $class }} } from "@unikraft/cloud-plugin-{{ $plugin }}-api";
+
+const api = new {{ $class }}({
+  baseUrl: `https://api.fra.unikraft.cloud/v1/instances/${uuid}/plugins/{{ $plugin }}`,
+  token: process.env.UKC_TOKEN,
+});
+```
+
+The last path segment is whatever name the plugin was attached under in the
+instance's `plugins` array, so it is not necessarily `{{ $plugin }}`. To let the
+SDK build that URL for you, use `@unikraft/cloud` instead.
+
+## Exports
+
+| Import | Carries |
+| --- | --- |
+| `@unikraft/cloud-plugin-{{ $plugin }}-api` | `{{ $class }}`{{ range $tags }}, `{{ pascalcase . }}Api`{{ end }}, `models` |
+| `@unikraft/cloud-plugin-{{ $plugin }}-api/models` | The wire types |
+
+`{{ $class }}` groups one client per resource:
+{{ range $tags }}
+- `api.{{ camelcase . }}` — the `{{ . }}` resource
+{{- end }}

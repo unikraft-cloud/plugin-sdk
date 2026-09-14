@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "compilerOptions": {
+    "module": "node20",
+    "target": "ES2022",
+    "lib": ["ES2024", "ESNext.Array", "ESNext.Collection", "ESNext.Iterator"],
+
+    "types": [],
+
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "outDir": "./dist",
+    "rootDir": "./src",
+
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
+
+    // The generated sources carry their own type-only markers, so the emit
+    // never has to guess which imports survive.
+    "verbatimModuleSyntax": true,
+    "isolatedModules": true,
+    // Keeps the output to syntax Node can strip on its own.
+    "erasableSyntaxOnly": true,
+
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true
+  },
+  "include": ["src/**/*.ts"]
+}
