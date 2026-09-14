@@ -75,7 +75,7 @@ was_tmpl=$(field templatesHash)
 was_cfg=$(field configHash)
 
 if [ -z "$was_spec" ]; then
-	echo "warning: $name@$ver predates source fingerprints, so it cannot be checked"
+	echo "warning: $name@$ver predates source fingerprints, so the check skips it"
 	exit 10
 fi
 

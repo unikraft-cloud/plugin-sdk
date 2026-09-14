@@ -38,15 +38,20 @@ CLIENT_IMPORT ?= @unikraft/cloud/core/http
 
 SDK_SPEC    ?= @unikraft/cloud@$(DIST_TAG)
 
-# `build` installs the SDK from $(BUILD), two directories below this one, so a
-# relative local spec would be looked up from the wrong directory there.  Only
+# `build` installs the SDK from $(BUILD), two directories below this one, so
+# npm would look up a relative local spec from the wrong directory there.  Only
 # path- and tarball-shaped specs become absolute; a registry spec such as
 # "@unikraft/cloud@next" has to reach npm unchanged.
 SDK_SPEC_ABS = $(if $(filter /% ./% ../% %.tgz,$(SDK_SPEC)),$(abspath $(SDK_SPEC)),$(SDK_SPEC))
 
-# Derives range from "0.1.1-next.N" turns to ">=0.1.1-0 <0.2.0"
+# Derives the range: "0.1.1-next.N" becomes ">=0.1.1-0 <0.2.0".
 # sdk-range.sh explains why.
-SDK_RANGE   ?= $(shell ./sdk-range.sh $(SDK_SPEC_ABS))
+#
+# The $(eval) memoizes the value, like OPENAPI_GEN_REVISION above.  Each
+# expansion would otherwise run the script again, and each run can ask the npm
+# registry.  One lookup also guarantees that package.json and configHash carry
+# the same range when the registry moves mid-build.
+SDK_RANGE   ?= $(eval SDK_RANGE := $(shell ./sdk-range.sh $(SDK_SPEC_ABS)))$(SDK_RANGE)
 
 PUBLISH_FLAGS ?=
 

@@ -5,7 +5,7 @@
 # Print the @unikraft/cloud peer range for a given npm spec, or nothing when the
 # spec cannot be resolved.
 #
-# The range has to be derived rather than hard-coded.  npm's semver excludes a
+# Do not replace this derivation with a hard-coded range.  npm's semver excludes a
 # prerelease from a range unless some comparator carries a prerelease tag on the
 # same major.minor.patch, so "^0.1.0" and ">=0.1.0" both fail to match an SDK
 # published as 0.1.1-next.N.  npm does not report that as a conflict: it
@@ -39,13 +39,22 @@ esac
 
 [ -n "$version" ] || exit 0
 
+# js-sdk keeps a 0.0.0 placeholder in package.json, and its release workflow
+# stamps the real version at publish time.  A local checkout therefore reads
+# 0.0.0, and the derived range (">=0.0.0 <0.0.1") matches no published SDK.
+# Treat 0.0.0 as unresolved, so the Makefile fails with its "set SDK_RANGE
+# explicitly" message.
+[ "$version" != 0.0.0 ] || exit 0
+
 $NODE -e '
 const v = process.argv[1];
 const m = /^(\d+)\.(\d+)\.(\d+)/.exec(v);
 if (!m) process.exit(0);
 const [, major, minor, patch] = m;
 // A prerelease lower bound needs its own prerelease tag on the same tuple.
-const lower = v.includes("-") ? `${major}.${minor}.${patch}-0` : `${major}.${minor}.${patch}`;
+// Test the prerelease position only: a hyphen in build metadata ("1.2.3+b-7")
+// is not a prerelease and must not loosen the bound.
+const lower = /^\d+\.\d+\.\d+-/.test(v) ? `${major}.${minor}.${patch}-0` : `${major}.${minor}.${patch}`;
 // Pre-1.0 packages break on the minor, and 0.0.z breaks on every patch, so
 // each stops the range one step above where it can still be compatible.
 const upper =

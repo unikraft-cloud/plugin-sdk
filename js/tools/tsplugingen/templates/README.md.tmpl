@@ -4,12 +4,12 @@
 --- README.md
 # @unikraft/cloud-plugin-{{ $plugin }}-api
 
-The generated client for the Unikraft Cloud `{{ $plugin }}` plugin API. It is
-generated from the plugin's OpenAPI specification, so **do not edit it by
-hand**.
+The generated client for the Unikraft Cloud `{{ $plugin }}` plugin API.
+openapi-gen generates it from the plugin's OpenAPI specification, so **do not
+edit it by hand**.
 
-This package is the raw ("plumbing") layer. Methods are named after their
-`operationId` and return the response envelope exactly as the specification
+This package is the raw ("plumbing") layer. Each method carries the name of its
+`operationId` and returns the response envelope exactly as the specification
 describes it. If you want the idiomatic layer, use
 [`@unikraft/cloud`](https://www.npmjs.com/package/@unikraft/cloud), which wraps
 this package and creates the instance for you.

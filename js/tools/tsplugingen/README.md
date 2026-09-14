@@ -108,8 +108,8 @@ derived range covers a whole staging cycle and then stops:
 | `0.1.2`        | matches            |
 | `0.1.2-next.0` | **no match**       |
 
-The range survives every `next.N` bump. It expires on one event: staging
-opening the next patch, which is what happens when stable ships `0.1.1`. A
+The range survives every `next.N` bump. It expires on one event: staging opens
+the next patch, which happens when stable ships `0.1.1`. A
 plugin published before that point would quietly get a second `@unikraft/cloud`
 nested under it.
 
@@ -164,10 +164,10 @@ A version that npm received before these hashes existed carries none of them.
 For that version, `publish` warns and skips, because there is nothing to
 compare.
 
-A registry that cannot be reached is not an answer either way, so a failed
-lookup fails the step. Reading it as "not published yet" would publish over the
-check, and reading it as "carries no hash" would skip the check and report
-success.
+A failed registry lookup is not an answer either way, so it fails the step. If
+the check read the failure as "not published yet", it would publish over the
+check. If it read the failure as "carries no hash", it would skip the check and
+report success.
 
 ## Configuration
 

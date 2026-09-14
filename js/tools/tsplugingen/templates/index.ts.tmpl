@@ -20,9 +20,8 @@
 import type { ApiClientConfig } from "{{ $clientImport }}";
 
 /**
- * Deriving the URL is the porcelain layer's job, in `@unikraft/cloud`. Reach
- * for this class only when you want the raw envelopes against an instance you
- * already have.
+ * The porcelain layer in `@unikraft/cloud` derives the URL. Use this class
+ * only when you want the raw envelopes against an instance you already have.
  *
  * @example
  * import { {{ $class }} } from "@unikraft/cloud-plugin-{{ $plugin }}-api";
