@@ -1,0 +1,58 @@
+{{- $plugin := .Var "pluginName" "plugin" -}}
+{{- $version := .Var "version" "0.0.0" -}}
+{{- $sdk := .Var "sdkVersion" "*" -}}
+{{- $specHash := .Var "specHash" "" -}}
+{{- $templatesHash := .Var "templatesHash" "" -}}
+{{- $configHash := .Var "configHash" "" -}}
+{{- if not (regexMatch "^[a-z0-9][a-z0-9._~-]*$" $plugin) -}}
+{{- fail (printf "plugin name %q cannot be part of an npm package name; use lowercase letters, digits and - . _ ~" $plugin) -}}
+{{- end -}}
+--- package.json
+{
+  "name": "@unikraft/cloud-plugin-{{ $plugin }}-api",
+  "version": "{{ $version }}",
+  "description": "Generated TypeScript client for the Unikraft Cloud `{{ $plugin }}` plugin API",
+  "license": "BSD-3-Clause",
+  "author": "Unikraft GmbH",
+  "homepage": "https://unikraft.com",
+  "keywords": ["unikraft", "unikraft-cloud", "plugin", "{{ $plugin }}", "sdk"],
+  "type": "module",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "sideEffects": false,
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./models": {
+      "types": "./dist/api/models.gen.d.ts",
+      "default": "./dist/api/models.gen.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": ["dist", "README.md"],
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist",
+    "typecheck": "tsc --noEmit",
+    "format": "biome format --write src"
+  },
+  "peerDependencies": {
+    "@unikraft/cloud": "{{ $sdk }}"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.5.13",
+    "typescript": "^7.0.2"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "unikraft": {
+    "specHash": "{{ $specHash }}",
+    "templatesHash": "{{ $templatesHash }}",
+    "configHash": "{{ $configHash }}"
+  }
+}
