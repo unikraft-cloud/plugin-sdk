@@ -1,0 +1,37 @@
+js/tools/tsplugingen/templates/resources.tmpl
+  h_3a8cdd8dbdd7a3 11-13,19-30,33,64-70,89,96-97,101-102,105,116,175-178,191-192,194,197,214,227
+  h_3a8cdd8dbdd7a3 1-10,14-18,31-32,34-63,71-88,90-95,98-100,103-104,106-115,117-174,179-190,193,195-196,198-213,215-226,228-237
+js/tools/tsplugingen/.gitignore
+  h_3a8cdd8dbdd7a3 1-2
+js/tools/tsplugingen/Makefile
+  h_3a8cdd8dbdd7a3 1-169
+js/tools/tsplugingen/README.md
+  h_3a8cdd8dbdd7a3 1-193
+js/tools/tsplugingen/publish-check.sh
+  h_3a8cdd8dbdd7a3 1-99
+js/tools/tsplugingen/sdk-range.sh
+  h_3a8cdd8dbdd7a3 1-58
+js/tools/tsplugingen/static/biome.json
+  h_3a8cdd8dbdd7a3 1-25
+js/tools/tsplugingen/static/tsconfig.json
+  h_3a8cdd8dbdd7a3 1-32
+js/tools/tsplugingen/templates/README.md.tmpl
+  h_3a8cdd8dbdd7a3 1-54
+js/tools/tsplugingen/templates/index.ts.tmpl
+  h_3a8cdd8dbdd7a3 1-48
+js/tools/tsplugingen/templates/models.ts.tmpl
+  h_3a8cdd8dbdd7a3 1-67
+js/tools/tsplugingen/templates/package.json.tmpl
+  h_3a8cdd8dbdd7a3 1-58
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "da5fc10c4cfd95fb1473c3cb0d93e995b6203967",
+  "prompts": {},
+  "humans": {
+    "h_3a8cdd8dbdd7a3": {
+      "author": "aabedraba <abdallah@unikraft.com>"
+    }
+  }
+}
