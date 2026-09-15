@@ -1,0 +1,57 @@
+js/tools/tsplugingen/sdk-range.sh
+  s_1d43761da23023::t_8892fe8cfd2293 55-57
+  h_3a8cdd8dbdd7a3 1-7,9-41,49-54,58-67
+  s_1d43761da23023::t_d9420e51c8951a 8
+  s_1d43761da23023::t_426972a7ff1a30 42-46
+  s_1d43761da23023::t_1f0d129bded7c0 47-48
+js/tools/tsplugingen/publish-check.sh
+  h_3a8cdd8dbdd7a3 1-77,79-99
+  s_1d43761da23023::t_7c41874cb8cb7d 78
+js/tools/tsplugingen/templates/resources.tmpl
+  h_3a8cdd8dbdd7a3 1-237
+js/tools/tsplugingen/templates/package.json.tmpl
+  h_3a8cdd8dbdd7a3 1-58
+js/tools/tsplugingen/templates/index.ts.tmpl
+  h_3a8cdd8dbdd7a3 1-22,25-47
+  s_1d43761da23023::t_78167eb9bc9ca1 23-24
+js/tools/tsplugingen/templates/models.ts.tmpl
+  h_3a8cdd8dbdd7a3 1-67
+js/tools/tsplugingen/static/tsconfig.json
+  h_3a8cdd8dbdd7a3 1-32
+js/tools/tsplugingen/templates/README.md.tmpl
+  h_3a8cdd8dbdd7a3 1-6,10,13-54
+  s_1d43761da23023::t_0a18f7aa128a47 7-9,11-12
+js/tools/tsplugingen/static/biome.json
+  h_3a8cdd8dbdd7a3 1-25
+js/tools/tsplugingen/.gitignore
+  h_3a8cdd8dbdd7a3 1-2
+js/tools/tsplugingen/Makefile
+  s_1d43761da23023::t_8db2552b289166 41-42
+  s_1d43761da23023::t_9f0ca24d98e439 47,49-54
+  h_3a8cdd8dbdd7a3 1-40,43-46,48,55-174
+js/tools/tsplugingen/README.md
+  s_1d43761da23023::t_7f076993ee9a34 111-112
+  s_1d43761da23023::t_618bd517bab096 167-170
+  h_3a8cdd8dbdd7a3 1-110,113-166,171-193
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "79f33459b7b08279d4132c68021b45dc2a3ae57a",
+  "prompts": {},
+  "humans": {
+    "h_3a8cdd8dbdd7a3": {
+      "author": "aabedraba <abdallah@unikraft.com>"
+    }
+  },
+  "sessions": {
+    "s_1d43761da23023": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7e089ed3-9a17-4855-9345-c3b160295916",
+        "model": "claude-fable-5"
+      },
+      "human_author": null
+    }
+  }
+}
