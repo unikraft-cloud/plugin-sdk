@@ -17,11 +17,13 @@ this package and creates the instance for you.
 ## Install
 
 ```sh
-npm install @unikraft/cloud-plugin-{{ $plugin }}-api @unikraft/cloud
+npm install @unikraft/cloud-plugin-{{ $plugin }}-api
 ```
 
-`@unikraft/cloud` is a peer dependency, because the generated classes extend
-its `ApiClient` transport.
+The package has no dependencies. Each generated class takes a `Transport`, an
+object with `request()`, `bytes()` and `stream()`. The `ApiClient` of
+`@unikraft/cloud` is one. If you want to use it as the transport, install the
+SDK.
 
 ## Usage
 
@@ -29,12 +31,15 @@ The plugin runs inside a single instance and answers on that instance's plugin
 route, so `baseUrl` is the full plugin endpoint rather than a metro root.
 
 ```ts
+import { ApiClient } from "@unikraft/cloud/core/http";
 import { {{ $class }} } from "@unikraft/cloud-plugin-{{ $plugin }}-api";
 
-const api = new {{ $class }}({
-  baseUrl: `https://api.fra.unikraft.cloud/v1/instances/${uuid}/plugins/{{ $plugin }}`,
-  token: process.env.UKC_TOKEN,
-});
+const api = new {{ $class }}(
+  new ApiClient({
+    baseUrl: `https://api.fra.unikraft.cloud/v1/instances/${uuid}/plugins/{{ $plugin }}`,
+    token: process.env.UKC_TOKEN,
+  }),
+);
 ```
 
 The last path segment is whatever name the plugin was attached under in the
@@ -45,7 +50,7 @@ SDK build that URL for you, use `@unikraft/cloud` instead.
 
 | Import | Carries |
 | --- | --- |
-| `@unikraft/cloud-plugin-{{ $plugin }}-api` | `{{ $class }}`{{ range $tags }}, `{{ pascalcase . }}Api`{{ end }}, `models` |
+| `@unikraft/cloud-plugin-{{ $plugin }}-api` | `{{ $class }}`{{ range $tags }}, `{{ pascalcase . }}Api`{{ end }}, `models`, and the types `Transport`, `RequestArgs`, `CallOptions` |
 | `@unikraft/cloud-plugin-{{ $plugin }}-api/models` | The wire types |
 
 `{{ $class }}` groups one client per resource:

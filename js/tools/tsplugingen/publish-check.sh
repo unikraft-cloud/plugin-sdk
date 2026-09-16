@@ -92,7 +92,7 @@ echo "error: $name@$ver is on npm, but it came from different sources." >&2
 [ "$was_tmpl" = "$tmpl_hash" ] ||
 	echo "  The generator templates or the static build config changed." >&2
 [ "$was_cfg" = "$cfg_hash" ] ||
-	echo "  The peer range, the client import or the generator changed." >&2
+	echo "  The generator changed." >&2
 echo "  A new version must ship the change." >&2
 echo "  on npm:  spec=$was_spec templates=$was_tmpl config=$was_cfg" >&2
 echo "  current: spec=$spec_hash templates=$tmpl_hash config=$cfg_hash" >&2
