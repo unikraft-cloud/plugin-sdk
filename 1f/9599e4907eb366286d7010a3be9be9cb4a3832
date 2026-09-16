@@ -1,0 +1,29 @@
+js/tools/tsplugingen/static/tsconfig.json
+  h_3a8cdd8dbdd7a3 6
+js/tools/tsplugingen/templates/index.ts.tmpl
+  h_3a8cdd8dbdd7a3 14-15,18,25,29,32-33,41-48,50,56
+  h_3a8cdd8dbdd7a3 28,30-31
+js/tools/tsplugingen/Makefile
+  h_3a8cdd8dbdd7a3 20,24-25,52-56,115,119-120,122
+js/tools/tsplugingen/README.md
+  h_3a8cdd8dbdd7a3 20-22,36-58,77,111,114-116,145,157-158
+js/tools/tsplugingen/publish-check.sh
+  h_3a8cdd8dbdd7a3 95
+js/tools/tsplugingen/templates/README.md.tmpl
+  h_3a8cdd8dbdd7a3 20,23-26,34,37-42,53
+js/tools/tsplugingen/templates/resources.tmpl
+  h_3a8cdd8dbdd7a3 23-24,37,43-49,61,76-77,90,146,163-164,212
+js/tools/tsplugingen/templates/transport.ts.tmpl
+  h_3a8cdd8dbdd7a3 1-55
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1f9599e4907eb366286d7010a3be9be9cb4a3832",
+  "prompts": {},
+  "humans": {
+    "h_3a8cdd8dbdd7a3": {
+      "author": "aabedraba <abdallah@unikraft.com>"
+    }
+  }
+}
