@@ -17,16 +17,9 @@ registry.
 - **Input:** `<PLUGIN>/openapi.yaml` in the plugins repository.
 - **Generator:** [`openapi-gen`](https://github.com/unikraft-cloud/x/tree/prod-staging/tools/openapi-gen)
   with the templates in [`templates/`](templates). These templates are the
-  platform SDK's own templates, changed to use an external transport.
-- **Peer dependency:** `@unikraft/cloud`. The generated classes extend its
-  `ApiClient`.
-
-> **Needs `@unikraft/cloud` >= 0.1.1.** `CLIENT_IMPORT` defaults to the
-> `@unikraft/cloud/core/http` subpath, which
-> [js-sdk#26](https://github.com/unikraft-cloud/js-sdk/pull/26) adds. Until
-> that lands and publishes, `build` cannot resolve the peer and npm fails with
-> `notarget`. Point `SDK_SPEC` at a local js-sdk checkout or tarball to build
-> before then.
+  platform SDK's own templates, changed to take an external transport.
+- **Dependencies:** none. The generated classes take a `Transport`, and the
+  contract for it ships inside the package. See below.
 
 ## Generated code only
 
@@ -40,7 +33,29 @@ package and wraps it. For the same reason, this package does not derive the base
 URL from the specification. `servers` in `api.tsp` hardcodes the `sandbox`
 segment, but a plugin answers under the name that you attach it with. The SDK
 builds the URL in `src/core/plugin.ts` instead, and this package takes a
-finished `baseUrl`.
+finished transport.
+
+## The transport contract
+
+Every generated class takes one argument, a `Transport`: an object with
+`request()`, `bytes()` and `stream()`. The SDK's `ApiClient` in
+`@unikraft/cloud/core/http` is one. The type is structural, so any object with
+these three methods is one too.
+
+The contract is `templates/transport.ts.tmpl`, which `generate` writes to
+`src/transport.ts` in the package. It is the only copy of the interface. The
+package therefore needs no dependency on `@unikraft/cloud`, and a caller cannot
+get two copies of the SDK in one tree.
+
+js-sdk holds itself to the contract. `ApiClient` satisfies the interface by
+shape, a comment on the class points here, and the js-sdk test suite checks
+`ApiClient` against the published plugin package. The header of the file names
+the changes that are safe (a new optional parameter, a wider input type) and
+the ones that break every plugin package (a rename, a new required parameter, a
+changed return type). A breaking change needs the same change in `ApiClient`
+and every plugin package republished in the same cycle. Because the file is a
+template, `templatesHash` covers it, so a changed contract makes `publish`
+refuse to skip a plugin that npm holds under the old one.
 
 ## The specifications are not in the repository
 
@@ -59,7 +74,7 @@ already flattens its shared schema names with `@@friendlyName`.
 ## Usage
 
 ```sh
-make config             # show the resolved channel, plugins and peer range
+make config             # show the resolved channel, plugins and generator
 make list               # list the plugins that have a compiled specification
 make plugin-sandbox     # generate and build one plugin
 make all                # every plugin
@@ -69,53 +84,6 @@ make publish-all        # publish everything that is not on npm yet
 The build writes its output to `.build/<PLUGIN>/dist`, which git ignores.
 
 The generated package builds with TypeScript 7 and formats with Biome 2.
-
-## Do not hard-code the peer range
-
-The Makefile computes `SDK_RANGE` from the `@unikraft/cloud` version that the
-channel resolves to. Do not replace it with a constant such as `^0.1.0`.
-
-npm's semver excludes a prerelease from a range unless some comparator carries a
-prerelease tag on the same `major.minor.patch`. js-sdk publishes its staging
-channel as `0.1.1-next.N`. Neither `^0.1.0` nor `>=0.1.0` matches that version.
-
-npm does not report the mismatch as a conflict. npm installs a **second copy**
-of `@unikraft/cloud` under this package instead. The tree then holds two
-`ApiClient` classes and two `UnikraftCloudError` classes. Every `instanceof`
-check that a caller makes against the SDK's error type returns `false`. The
-install prints no warning.
-
-On a prerelease channel, the Makefile adds a `-0` lower bound, so the range
-matches:
-
-| SDK version    | Derived range      |
-| -------------- | ------------------ |
-| `0.0.3`        | `>=0.0.3 <0.0.4`   |
-| `0.1.0`        | `>=0.1.0 <0.2.0`   |
-| `0.1.1-next.0` | `>=0.1.1-0 <0.2.0` |
-| `1.2.3`        | `>=1.2.3 <2.0.0`   |
-
-### A prerelease range expires at the next stable release
-
-npm ties the prerelease exemption to one exact `major.minor.patch`, so a
-derived range covers a whole staging cycle and then stops:
-
-| SDK version    | `>=0.1.1-0 <0.2.0` |
-| -------------- | ------------------ |
-| `0.1.1-next.0` | matches            |
-| `0.1.1-next.9` | matches            |
-| `0.1.1`        | matches            |
-| `0.1.2`        | matches            |
-| `0.1.2-next.0` | **no match**       |
-
-The range survives every `next.N` bump. It expires on one event: staging opens
-the next patch, which happens when stable ships `0.1.1`. A
-plugin published before that point would quietly get a second `@unikraft/cloud`
-nested under it.
-
-`configHash` below is what catches this. The peer range is part of the
-published fingerprint, so at that boundary `publish` fails instead of skipping,
-and the plugin has to be regenerated and republished against the new range.
 
 ## A publish checks the sources that it came from
 
@@ -140,12 +108,12 @@ the hashes into the package:
 | --------------- | ----------------------------------------------------- |
 | `specHash`      | `<PLUGIN>/openapi.yaml`                               |
 | `templatesHash` | `templates/` and `static/`                            |
-| `configHash`    | `SDK_RANGE`, `CLIENT_IMPORT` and `OPENAPI_GEN`        |
+| `configHash`    | `OPENAPI_GEN`                                         |
 
 The specification is not the only thing that moves. A template fix changes the
-generated code while the specification stands still, and so does a new peer
-range, a different client import, or a new generator revision. None of these
-leave a mark in a file that the first two hashes cover.
+generated code while the specification stands still, and so does a new
+generator revision. Neither leaves a mark in a file that the first hash
+covers.
 
 By default, `OPENAPI_GEN` names the exact revision that the `CHANNEL` branch
 resolves to, so a new commit on that branch changes `configHash`. An
@@ -174,11 +142,8 @@ report success.
 | Variable        | Default                                                | Description                                                           |
 | --------------- | ------------------------------------------------------ | --------------------------------------------------------------------- |
 | `SPEC_ROOT`     | `../../../../plugins`                                  | Root that holds `<PLUGIN>/openapi.yaml`.                              |
-| `CHANNEL`       | `prod-staging`                                         | Release channel. Sets the generator branch, the dist-tag and the SDK. |
+| `CHANNEL`       | `prod-staging`                                         | Release channel. Sets the generator branch and the dist-tag.          |
 | `OPENAPI_GEN`   | `go run unikraft.com/x/tools/openapi-gen@<revision>`   | The generator command. `<revision>` is the commit that `CHANNEL` resolves to. |
-| `CLIENT_IMPORT` | `@unikraft/cloud/core/http`                            | Where the generated classes import `ApiClient` from.                  |
-| `SDK_SPEC`      | `@unikraft/cloud@<dist-tag>`                           | npm package specifier for the peer. A tarball or a path also works, and is resolved relative to this directory. |
-| `SDK_RANGE`     | _derived from_ `SDK_SPEC`                              | The peer range that `generate` writes into `package.json`. See above. |
 | `BUILD_ROOT`    | `.build`                                               | Directory that `generate` writes each plugin into.                    |
 | `PUBLISH_FLAGS` | _(empty)_                                              | Extra `npm publish` flags. CI passes `--provenance`.                  |
 
@@ -189,5 +154,6 @@ report success.
 | `models.ts.tmpl`    | `src/api/models.gen.ts`            | request and response models, enums     |
 | `resources.tmpl`    | `src/api/*.gen.ts`, `index.gen.ts` | one `…Api` class per tag, and a barrel |
 | `index.ts.tmpl`     | `src/index.ts`                     | the container class that groups them   |
-| `package.json.tmpl` | `package.json`                     | manifest, exports, peer range          |
+| `transport.ts.tmpl` | `src/transport.ts`                 | the `Transport` contract, verbatim     |
+| `package.json.tmpl` | `package.json`                     | manifest and exports                   |
 | `README.md.tmpl`    | `README.md`                        | the per-package readme                 |

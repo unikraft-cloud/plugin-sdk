@@ -1,6 +1,5 @@
 {{- $plugin := .Var "pluginName" "plugin" -}}
 {{- $version := .Var "version" "0.0.0" -}}
-{{- $sdk := .Var "sdkVersion" "*" -}}
 {{- $specHash := .Var "specHash" "" -}}
 {{- $templatesHash := .Var "templatesHash" "" -}}
 {{- $configHash := .Var "configHash" "" -}}
@@ -39,9 +38,6 @@
     "clean": "rm -rf dist",
     "typecheck": "tsc --noEmit",
     "format": "biome format --write src"
-  },
-  "peerDependencies": {
-    "@unikraft/cloud": "{{ $sdk }}"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.13",

@@ -17,12 +17,12 @@ NPM         ?= npm
 NPX         ?= npx
 NODE        ?= node
 
-# sdk-range.sh and publish-check.sh run npm and node too.
+# publish-check.sh runs npm and node too.
 export NPM
 export NODE
 
-# One knob for four things: the OpenAPI branch, the generator branch, the
-# dist-tag of the SDK to build against, and the dist-tag to publish under.
+# One knob for three things: the OpenAPI branch, the generator branch, and the
+# dist-tag to publish under.
 CHANNEL     ?= prod-staging
 DIST_TAG     = $(if $(filter prod-stable,$(CHANNEL)),latest,next)
 
@@ -31,27 +31,6 @@ DIST_TAG     = $(if $(filter prod-stable,$(CHANNEL)),latest,next)
 OPENAPI_GEN_MOD      = unikraft.com/x/tools/openapi-gen
 OPENAPI_GEN_REVISION = $(eval OPENAPI_GEN_REVISION := $(shell $(GO) list -m -f '{{.Version}}' $(OPENAPI_GEN_MOD)@$(CHANNEL) 2>/dev/null))$(OPENAPI_GEN_REVISION)
 OPENAPI_GEN ?= $(GO) run $(OPENAPI_GEN_MOD)@$(OPENAPI_GEN_REVISION)
-
-# A leaf subpath, so the plugin package does not pull the SDK's idiomatic layer
-# into its module graph.  Needs @unikraft/cloud >=0.1.1, which exports it.
-CLIENT_IMPORT ?= @unikraft/cloud/core/http
-
-SDK_SPEC    ?= @unikraft/cloud@$(DIST_TAG)
-
-# `build` installs the SDK from $(BUILD), two directories below this one, so
-# npm would look up a relative local spec from the wrong directory there.  Only
-# path- and tarball-shaped specs become absolute; a registry spec such as
-# "@unikraft/cloud@next" has to reach npm unchanged.
-SDK_SPEC_ABS = $(if $(filter /% ./% ../% %.tgz,$(SDK_SPEC)),$(abspath $(SDK_SPEC)),$(SDK_SPEC))
-
-# Derives the range: "0.1.1-next.N" becomes ">=0.1.1-0 <0.2.0".
-# sdk-range.sh explains why.
-#
-# The $(eval) memoizes the value, like OPENAPI_GEN_REVISION above.  Each
-# expansion would otherwise run the script again, and each run can ask the npm
-# registry.  One lookup also guarantees that package.json and configHash carry
-# the same range when the registry moves mid-build.
-SDK_RANGE   ?= $(eval SDK_RANGE := $(shell ./sdk-range.sh $(SDK_SPEC_ABS)))$(SDK_RANGE)
 
 PUBLISH_FLAGS ?=
 
@@ -70,13 +49,11 @@ VERSION = $(shell awk '/^info:/{f=1;next} /^[^[:space:]#]/{f=0} f&&/^[[:space:]]
 SPEC_HASH      = $(shell $(SHA256) "$(SPEC)" 2>/dev/null | cut -c1-64)
 TEMPLATES_HASH = $(shell $(SHA256) $(sort $(wildcard $(TEMPLATES)/* $(STATIC)/*)) 2>/dev/null | $(SHA256) | cut -c1-64)
 
-# The spec and the templates are not the only inputs.  The peer range, the
-# client import and the generator decide the output as well, and none of them
-# leaves a mark in any file the two hashes above cover.  Without this, staging
-# opening a new patch (0.1.1-next.N -> 0.1.2-next.0) rewrites every peer range
-# while publish still reports the published version as built from these
-# sources.
-CONFIG_HASH    = $(shell printf '%s\n%s\n%s\n' "$(SDK_RANGE)" "$(CLIENT_IMPORT)" "$(OPENAPI_GEN)" | $(SHA256) | cut -c1-64)
+# The spec and the templates are not the only inputs.  The generator decides
+# the output as well, and it leaves no mark in any file the two hashes above
+# cover.  Without this, a new generator revision ships in no package: publish
+# still reports the published version as built from these sources.
+CONFIG_HASH    = $(shell printf '%s\n' "$(OPENAPI_GEN)" | $(SHA256) | cut -c1-64)
 
 .PHONY: all list clean generate build publish publish-all config check-plugins
 
@@ -105,9 +82,6 @@ config:
 	@echo "dist-tag:      $(DIST_TAG)"
 	@echo "spec root:     $(SPEC_ROOT)"
 	@echo "plugins:       $(PLUGINS)"
-	@echo "client import: $(CLIENT_IMPORT)"
-	@echo "sdk spec:      $(SDK_SPEC_ABS)"
-	@echo "sdk range:     $(SDK_RANGE)"
 	@echo "generator:     $(OPENAPI_GEN)"
 	@echo "templates:     $(TEMPLATES_HASH)"
 	@echo "config:        $(CONFIG_HASH)"
@@ -122,7 +96,6 @@ generate:
 	@test -f "$(SPEC)" || { echo "error: no spec at $(SPEC) (compile it with 'npx tsp compile $(PLUGIN)/api.tsp')"; exit 1; }
 	@test -n "$(VERSION)" || { echo "error: no semver info.version in $(SPEC)"; exit 1; }
 	@$(if $(filter file,$(origin OPENAPI_GEN)),test -n "$(OPENAPI_GEN_REVISION)" || { echo "error: could not resolve $(OPENAPI_GEN_MOD)@$(CHANNEL) to a revision with '$(GO) list -m'"; exit 1; })
-	@test -n "$(SDK_RANGE)" || { echo "error: could not resolve a version from SDK_SPEC=$(SDK_SPEC), so the @unikraft/cloud peer range is unknown; set SDK_RANGE explicitly"; exit 1; }
 	@test -n "$(SPEC_HASH)" || { echo "error: could not hash $(SPEC) with '$(SHA256)'"; exit 1; }
 	@test -n "$(TEMPLATES_HASH)" || { echo "error: could not hash $(TEMPLATES)/ and $(STATIC)/ with '$(SHA256)'"; exit 1; }
 	@test -n "$(CONFIG_HASH)" || { echo "error: could not hash the generation config with '$(SHA256)'"; exit 1; }
@@ -135,21 +108,18 @@ generate:
 	  -v "package=api" \
 	  -v "pluginName=$(PLUGIN)" \
 	  -v "version=$(VERSION)" \
-	  -v "sdkVersion=$(SDK_RANGE)" \
-	  -v "clientImport=$(CLIENT_IMPORT)" \
 	  -v "specHash=$(SPEC_HASH)" \
 	  -v "templatesHash=$(TEMPLATES_HASH)" \
 	  -v "configHash=$(CONFIG_HASH)"
 	cp -R $(STATIC)/. "$(BUILD)/"
-	@echo "generated @unikraft/cloud-plugin-$(PLUGIN)-api@$(VERSION) (peer @unikraft/cloud $(SDK_RANGE)) -> $(BUILD)"
+	@echo "generated @unikraft/cloud-plugin-$(PLUGIN)-api@$(VERSION) -> $(BUILD)"
 
 ## Generate and compile one plugin into an ESM package.
 #
-# The SDK goes on the install line positionally, which satisfies the
-# peerDependency from a local tarball or path, so npm never queries the registry
-# for the peer while the SDK is unpublished.
+# The package has no runtime dependencies: the Transport contract is one of its
+# own files, so the install brings in the compiler and the formatter only.
 build: generate
-	cd "$(BUILD)" && $(NPM) install --no-save --no-audit --no-fund "$(SDK_SPEC_ABS)"
+	cd "$(BUILD)" && $(NPM) install --no-save --no-audit --no-fund
 	-cd "$(BUILD)" && $(NPX) --no-install @biomejs/biome format --write src
 	cd "$(BUILD)" && $(NPM) run build
 	@echo "built $(BUILD)/dist"
