@@ -1,0 +1,81 @@
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright (c) 2026, Unikraft GmbH.  All rights reserved.
+
+version: 3
+
+includes:
+  go:
+    taskfile: https://github.com/unikraft-cloud/x.git//Taskfile.go.yml?ref=prod-staging
+    vars:
+      go_module: unikraft.com/cloud/plugins/example
+      bin: init
+
+vars:
+  tsp_bin: tsp
+  unikraft_bin: unikraft
+  npm_bin: npm
+  pnpm_bin: pnpm
+
+tasks:
+  default:
+    cmds:
+    - task: go:static-check
+    - task: go:test
+    - task: plugin
+
+  plugin:
+    desc: Cross-compile the plugin `init` binary into ./dist/init.
+    deps:
+    - api:generate
+    vars:
+      arch: '{{.arch | default "amd64"}}'
+    cmds:
+    - task: go:build
+      vars:
+        cgo_enabled: 0
+        goos: linux
+        goarch: '{{.arch}}'
+        package: .
+
+  image:
+    desc: Build & publish the plugin ROM image (all Kraftfile targets).
+    vars:
+      output: '{{.output | default "example:latest"}}'
+    cmd: |
+      {{.unikraft_bin}} build --output {{.output}} .
+
+  api:generate:
+    desc: Generate API stubs.
+    deps:
+    - openapi.yaml
+    cmd: |
+      {{.go_bin}} generate ./...
+
+  openapi.yaml:
+    desc: Generate OpenAPI spec.
+    deps:
+    - node_modules
+    cmd: |
+      {{.tsp_bin}} compile api.tsp
+
+  node_modules:
+    desc: Install the TypeSpec toolchain (no-op while ./node_modules exists).
+    # `tsp compile` resolves the emitter and the libraries `api.tsp` imports
+    # from this module's own `node_modules`, so they must be installed before
+    # the spec can be generated.  The `status` check keeps this a one-off: pass
+    # `--force` (or delete `node_modules`) to reinstall after editing
+    # `package.json`.
+    status:
+    - test -d node_modules
+    cmd: |
+      if command -v {{.pnpm_bin}} >/dev/null 2>&1; then
+        if test -f pnpm-lock.yaml; then
+          {{.pnpm_bin}} install --frozen-lockfile
+        else
+          {{.pnpm_bin}} install
+        fi
+      elif test -f package-lock.json; then
+        {{.npm_bin}} ci
+      else
+        {{.npm_bin}} install
+      fi
