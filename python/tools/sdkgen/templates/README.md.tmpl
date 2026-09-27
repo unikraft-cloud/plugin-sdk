@@ -1,0 +1,84 @@
+{{- $plugin := .Var "pluginName" "plugin" -}}
+{{- $dist := .Var "dist" "unikraft-cloud-plugin-api" -}}
+{{- $module := .Var "module" "unikraft_cloud_plugin_api" -}}
+{{- $sdkMin := .Var "sdkMin" "" -}}
+{{- $tags := uniqueTags .Operations -}}
+{{- $class := printf "%sPluginApi" (pascalcase $plugin) -}}
+--- README.md
+# {{ $dist }}
+
+The generated client for the Unikraft Cloud `{{ $plugin }}` plugin API.
+openapi-gen generates it from the plugin's OpenAPI specification, so **do not
+edit it by hand**.
+
+This package is the raw ("plumbing") layer. Each method carries the name of its
+`operationId` and returns the response envelope exactly as the specification
+describes it. If you want the idiomatic layer, use
+[`unikraft-cloud`](https://pypi.org/project/unikraft-cloud/), which wraps this
+package and resolves the instance for you.
+
+## Install
+
+```sh
+pip install {{ $dist }}
+```
+
+The package depends on pydantic and typing_extensions only. Each generated
+class takes a `Transport`,
+an object with `request()`, `request_no_content()`, `request_bytes()` and
+`stream()`. The `ApiClient` of `unikraft-cloud`
+{{ $sdkMin }} or later is one. If you want to use it as the transport, install
+the SDK.
+
+## Usage
+
+The plugin runs inside a single instance and answers on that instance's plugin
+route, so `base_url` is the full plugin endpoint rather than a metro root.
+
+```python
+import os
+
+from unikraft_cloud.core.http import ApiClient, ApiClientConfig
+from {{ $module }} import {{ $class }}
+
+uuid = "..."  # The instance the plugin is attached to.
+api = {{ $class }}(
+    ApiClient(
+        ApiClientConfig(
+            base_url=f"https://api.fra.unikraft.cloud/v1/instances/{uuid}/plugins/{{ $plugin }}",
+            token=os.environ["UKC_TOKEN"],
+        )
+    )
+)
+```
+
+The last path segment is whatever name the plugin was attached under in the
+instance's `plugins` array, so it is not necessarily `{{ $plugin }}`. To let the
+SDK build that URL for you, use `unikraft-cloud` instead.
+
+## Exports
+
+Everything below is importable from `{{ $module }}`.
+
+| Name | Carries |
+| --- | --- |
+| `{{ $class }}` | Every resource of the plugin behind one transport |
+{{- range $tags }}
+| `{{ pascalcase . }}Api` | The `{{ . }}` resource |
+{{- end }}
+| `models` | The wire models, an alias of `{{ $module }}.models_gen` |
+| `PLUGIN_NAME` | `"{{ $plugin }}"`, the name the plugin is attached under unless the instance's creator chose another |
+| `Transport`, `RawResponse` | The protocols a transport and a raw-bytes response satisfy |
+| `CallOptions` | The options every method takes as `**options`: `headers`, `base_url` and `timeout` |
+| `QueryValue` | What a query parameter may hold |
+| `VERSION`, `SDK_MIN` | This package's version, and the oldest `unikraft-cloud` whose `ApiClient` is a transport for it |
+| `SPEC_HASH`, `TEMPLATES_HASH`, `CONFIG_HASH` | SHA-256 fingerprints of the specification, the templates and the configuration this package was built from |
+
+A `CallOptions` key that is absent leaves the transport's default in place, so
+`timeout=None` lifts the timeout for one call and no `timeout` at all keeps the
+client's.
+
+`{{ $class }}` groups one client per resource:
+{{ range $tags }}
+- `api.{{ snakecase . }}`: the `{{ . }}` resource
+{{- end }}
