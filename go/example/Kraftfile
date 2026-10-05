@@ -1,0 +1,8 @@
+spec: v0.7
+
+targets:
+  - kraftcloud/x86_64
+  - kraftcloud/arm64
+
+roms:
+  - ./Dockerfile

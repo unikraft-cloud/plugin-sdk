@@ -3,6 +3,7 @@ go 1.27.1
 use (
 	// This list is alphabetically sorted.
 	./go
+	./go/example
 	./go/tools/sdkgen
 	./go/tools/sdkgen/examples
 )
