@@ -1,0 +1,46 @@
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright (c) 2026, Unikraft GmbH.  All rights reserved.
+
+version: 3
+
+# Every Go module in this repository is a member of `go.work` *and* a module in
+# its own right.  Module-scoped checks (notably `go mod tidy -diff`) must see
+# the module's own `go.mod` rather than the workspace's merged resolution, so
+# the per-module taskfiles below are always invoked with `GOWORK=off`.
+
+includes:
+  golang:
+    taskfile: ./go/Taskfile.yml
+    dir: ./go
+
+  sdkgen:
+    taskfile: ./go/tools/sdkgen/Taskfile.yml
+    dir: ./go/tools/sdkgen
+
+env:
+  GOWORK: "off"
+
+tasks:
+  default:
+  - task: golang:default
+  - task: sdkgen:default
+
+  sdkgen-examples-check:
+    desc: "Verify go/tools/sdkgen/examples is regenerated from its upstream spec"
+    dir: go/tools/sdkgen/examples
+    env:
+      GOWORK: ""
+    cmds:
+    - go generate ./...
+    - go build ./...
+    - git add -A -- .
+    - git diff --cached --exit-code -- .
+
+  # ci tasks
+
+  ci/check:
+  - task: golang:go:ci/check
+  - task: sdkgen-examples-check
+
+  ci/test:
+  - task: golang:go:ci/test

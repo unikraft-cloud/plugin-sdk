@@ -1,0 +1,11 @@
+name: actionlint
+
+on:
+  pull_request:
+    branches: [prod-staging]
+    paths:
+      - '.github/workflows/**'
+
+jobs:
+  actionlint:
+    uses: unikraft-cloud/x/.github/workflows/actionlint.yaml@prod-staging

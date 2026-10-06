@@ -1,0 +1,3 @@
+Kraftfile linguist-language=YAML
+*.gen.go linguist-generated=true
+openapi.yaml linguist-generated=true

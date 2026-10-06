@@ -1,0 +1,40 @@
+{{- $plugin := .Var "pluginName" "plugin" -}}
+{{- $dist := .Var "dist" "unikraft-cloud-plugin-api" -}}
+{{- $version := .Var "version" "0.0.0" -}}
+{{- /* PyPI folds runs of `-` into one and the module name does not, so a
+       doubled or outer `-` could collide with another plugin's project. */ -}}
+{{- if not (regexMatch "^[a-z0-9]+(-[a-z0-9]+)*$" $plugin) -}}
+{{- fail (printf "plugin name %q cannot be part of a PyPI distribution name; use lowercase letters and digits, with a single - between them" $plugin) -}}
+{{- end -}}
+--- pyproject.toml
+[project]
+name = "{{ $dist }}"
+version = "{{ $version }}"
+description = "Generated Python client for the Unikraft Cloud `{{ $plugin }}` plugin API"
+readme = "README.md"
+license = "BSD-3-Clause"
+license-files = ["LICENSE.md"]
+authors = [{ name = "Unikraft GmbH" }]
+requires-python = ">=3.10"
+keywords = ["unikraft", "unikraft-cloud", "plugin", "{{ $plugin }}", "sdk"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "Programming Language :: Python :: 3 :: Only",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+  "Typing :: Typed",
+]
+# The wire models are pydantic; the transport is whatever the caller passes.
+# Unpack on **options needs typing_extensions below Python 3.12.
+dependencies = [
+  "pydantic>=2.7",
+  "typing_extensions>=4.4",
+]
+
+[project.urls]
+Homepage = "https://unikraft.com"
+Repository = "https://github.com/unikraft-cloud/plugins"
+
+[build-system]
+requires = ["uv_build>=0.8.0,<0.9.0"]
+build-backend = "uv_build"
