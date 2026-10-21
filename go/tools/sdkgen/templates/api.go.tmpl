@@ -2,6 +2,22 @@
 
 package {{ .Var "package" "client" }}
 
+{{- /* WebSocket operations.
+
+       An operation that answers 101 Switching Protocols upgrades the call to
+       a WebSocket.  Only its handshake is an HTTP exchange the spec can
+       describe, so its method dials the socket and hands the connection back;
+       the frames are the plugin's contract.  The dial needs a library no other
+       operation does, which is imported only when some operation upgrades. */ -}}
+{{- $anyWS := false -}}
+{{- range $pathOp := .Operations -}}
+{{- if $pathOp.Operation.Responses -}}
+{{- range $entry := sortedResponseCodes $pathOp.Operation.Responses -}}
+{{- if eq $entry.Code "101" -}}{{- $anyWS = true -}}{{- end -}}
+{{- end -}}
+{{- end -}}
+{{- end }}
+
 import (
 	"bytes"
 	"context"
@@ -9,6 +25,10 @@ import (
 	"fmt"
 	"io"
 	"net/url"
+{{- if $anyWS }}
+
+	"github.com/coder/websocket"
+{{- end }}
 
 	"unikraft.com/cloud/sdk/platform"
 )
@@ -148,10 +168,41 @@ type {{ pascalcase $op.OperationID }}Opts struct {
 {{- end -}}
 {{- end }}
 
+{{- /* A 101 response makes the operation a WebSocket upgrade: a GET without a
+       body or a success payload, since the connection is its result. */ -}}
+{{- $isWS := false -}}
+{{- if $op.Responses -}}
+{{- range $entry := sortedResponseCodes $op.Responses -}}
+{{- if eq $entry.Code "101" -}}{{- $isWS = true -}}{{- end -}}
+{{- end -}}
+{{- end -}}
+{{- if $isWS -}}
+{{- if ne $method "GET" -}}
+{{- fail (printf "operation %s answers 101 but is a %s; a WebSocket upgrade is a GET" $op.OperationID $method) -}}
+{{- end -}}
+{{- if $hasBody -}}
+{{- fail (printf "operation %s answers 101 but takes a request body; a WebSocket upgrade carries none" $op.OperationID) -}}
+{{- end -}}
+{{- range $entry := sortedResponseCodes $op.Responses -}}
+{{- if hasPrefix "2" $entry.Code -}}
+{{- if $entry.Ref.Value -}}
+{{- if $entry.Ref.Value.Content -}}
+{{- fail (printf "operation %s answers 101 but also a %s with content; a WebSocket upgrade's result is the connection" $op.OperationID $entry.Code) -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+{{- end }}
+
 {{ if $op.Deprecated }}// Deprecated: This operation is deprecated.
 {{ end -}}
 // {{ pascalcase $op.OperationID }} {{ $op.Summary }}
-{{- if $isSSE }}
+{{- if $isWS }}
+//
+// The call upgrades to a WebSocket and returns the connection; its frames are
+// the plugin's contract. A plugin that does not upgrade answers with a
+// response envelope instead, which is returned as the error.
+{{- else if $isSSE }}
 //
 // The response is streamed as Server-Sent Events (SSE). The returned channel
 // emits decoded frames and is closed when the stream ends or ctx is cancelled.
@@ -183,7 +234,7 @@ func (c *Client) {{ pascalcase $op.OperationID }}(ctx context.Context, instance 
 , params *{{ pascalcase $op.OperationID }}Opts
 {{- end -}}
 , opts ...Option) (
-{{- if $isSSE }}<-chan *{{ $sseType }}{{ else }}*Response[{{ $dataType }}]{{ end }}, error) {
+{{- if $isWS }}*websocket.Conn{{ else if $isSSE }}<-chan *{{ $sseType }}{{ else }}*Response[{{ $dataType }}]{{ end }}, error) {
 	pathParams := map[string]string{
 {{- range $op.Parameters }}
 {{- if eq .Value.In "path" }}
@@ -219,6 +270,10 @@ func (c *Client) {{ pascalcase $op.OperationID }}(ctx context.Context, instance 
 {{- end }}
 {{- end }}
 {{- end }}
+{{- if $isWS }}
+
+	return doDial(ctx, c, instance, opPath, opts...)
+{{- else }}
 {{ if $hasBody }}
 	var bodyReader io.Reader
 	if body != nil {
@@ -249,6 +304,7 @@ func (c *Client) {{ pascalcase $op.OperationID }}(ctx context.Context, instance 
 		return resp, err
 	}
 	return resp, nil
+{{- end }}
 {{- end }}
 }
 {{- end }}
