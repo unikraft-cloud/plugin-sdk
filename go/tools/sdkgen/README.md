@@ -273,6 +273,15 @@ it with `RawBody()`, or from `Raw().Body`, and `Data` stays nil. The `Accept`
 header is the media type the spec names. Only the HTTP status is judged, so a
 body that is not JSON is not an error.
 
+An operation that answers `101 Switching Protocols` upgrades the call to a
+WebSocket and returns the `*websocket.Conn`
+([coder/websocket](https://github.com/coder/websocket)) it opened; its frames
+are the plugin's contract, not the spec's. A plugin that does not upgrade
+answers with an envelope, which comes back as the error. The dial is the one
+platform-specific piece of a client: a browser's WebSocket carries no bearer
+token, so the `js` build refuses to dial. Only a spec with such an operation
+imports the library.
+
 `Status` is a `platform.ResponseStatus`, so it compares against
 `platform.ResponseStatusSuccess`, `…Error` and `…PartialSuccess` rather than
 against bare strings — the same constants a plugin handler answers with.
@@ -336,8 +345,9 @@ Rendered from the templates in [`templates/`](templates) (embedded via
 | `model.gen.go`    | request/response models and enums                                |
 | `errors.gen.go`   | `APIError` / `ErrorResponse` helpers                             |
 | `utils.gen.go`    | SSE, query and header helpers                                    |
+| `dial.gen.go`, `dial_js.gen.go` | the WebSocket dial per build, only for a spec that upgrades |
 | `doc.gen.go`      | package doc                                                      |
-| `go.mod`          | `module <module>` + pinned `require`s (platform SDK, JSON)       |
+| `go.mod`          | `module <module>` + pinned `require`s (platform SDK, JSON, and coder/websocket when the spec upgrades) |
 
 ---
 
