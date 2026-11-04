@@ -2,6 +2,17 @@
 
 package {{ .Var "package" "client" }}
 
+{{- /* An operation that answers 101 Switching Protocols upgrades to a
+       WebSocket (see api.go.tmpl); its dial is rendered only then. */ -}}
+{{- $anyWS := false -}}
+{{- range $pathOp := .Operations -}}
+{{- if $pathOp.Operation.Responses -}}
+{{- range $entry := sortedResponseCodes $pathOp.Operation.Responses -}}
+{{- if eq $entry.Code "101" -}}{{- $anyWS = true -}}{{- end -}}
+{{- end -}}
+{{- end -}}
+{{- end }}
+
 import (
 	"bytes"
 	"context"
@@ -14,6 +25,10 @@ import (
 	"os"
 	"strings"
 	"time"
+{{- if $anyWS }}
+
+	"github.com/coder/websocket"
+{{- end }}
 
 	"unikraft.com/cloud/sdk/platform"
 )
@@ -363,6 +378,44 @@ func doStream[T any](ctx context.Context, c *Client, instance platform.Instance,
 
 	return fmt.Errorf("expected a text/event-stream response, got %q", resp.Header.Get("Content-Type"))
 }
+{{- if $anyWS }}
+
+// doDial performs the handshake of a plugin API call that upgrades to a
+// WebSocket and returns the connection, which is the caller's to close.  The
+// HTTP client's timeout bounds the handshake, not the connection.
+//
+// A plugin that does not upgrade answers with a JSON envelope instead, which
+// is decoded and returned as an error like any other failed call.
+func doDial(ctx context.Context, c *Client, instance platform.Instance, opPath string, opts ...Option) (*websocket.Conn, error) {
+	o := c.resolve(opts...)
+
+	req, err := newRequest(ctx, o, instance, http.MethodGet, opPath, nil, "application/json")
+	if err != nil {
+		return nil, err
+	}
+
+	conn, resp, err := dial(ctx, req, o.httpClient)
+	if err == nil {
+		return conn, nil
+	}
+	if resp == nil {
+		return nil, fmt.Errorf("performing the request: %w", err)
+	}
+
+	// Not the upgrade that was asked for: the body is the envelope describing why.
+	target := &Response[any]{}
+	raw, err := receive(resp, target)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := target.hydrate(raw); err != nil {
+		return nil, err
+	}
+
+	return nil, fmt.Errorf("expected a WebSocket upgrade, got %q", resp.Status)
+}
+{{- end }}
 
 // hydrate decodes an API response body into the envelope and reports the error
 // it describes, joining it with the error the HTTP status code implies.
@@ -438,6 +491,13 @@ func (r *Response[T]) transportErr() error {
 {{- if index $op.Extensions "x-unikraft-plugin-readiness" -}}
 {{- if $readyOp -}}
 {{- fail (printf "operations %s and %s both carry x-unikraft-plugin-readiness; a plugin has one readiness probe" $readyOp $op.OperationID) -}}
+{{- end -}}
+{{- if $op.Responses -}}
+{{- range $entry := sortedResponseCodes $op.Responses -}}
+{{- if eq $entry.Code "101" -}}
+{{- fail (printf "operation %s carries x-unikraft-plugin-readiness but upgrades to a WebSocket; a readiness probe answers an envelope" $op.OperationID) -}}
+{{- end -}}
+{{- end -}}
 {{- end -}}
 {{- range $op.Parameters -}}
 {{- if .Value.Required -}}
