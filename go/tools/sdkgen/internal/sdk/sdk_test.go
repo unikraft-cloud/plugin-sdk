@@ -475,7 +475,6 @@ func TestRenderWebSocketOperation(t *testing.T) {
 
 	want := "require (\n" +
 		"\t" + sdk.WebsocketModule + " " + sdk.DefaultWebsocketVersion + "\n" +
-		"\t" + sdk.JSONModule + " " + sdk.DefaultJSONVersion + "\n" +
 		"\t" + sdk.PlatformSDKModule + " " + sdk.DefaultPlatformSDKVersion + "\n" +
 		")\n"
 	if got := string(module.GoMod); !strings.Contains(got, want) {

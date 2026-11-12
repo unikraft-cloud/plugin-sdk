@@ -61,7 +61,6 @@ func (cmd *PluginSdkgenCLI) Run() error {
 		Version:            version,
 		GoVersion:          cmd.GoVersion,
 		PlatformSDKVersion: cmd.PlatformSDKVersion,
-		JSONVersion:        cmd.JSONVersion,
 		EmitGoMod:          proxy || cmd.EmitGoMod,
 	})
 	if err != nil {

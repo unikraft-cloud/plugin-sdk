@@ -41,17 +41,6 @@ const PlatformSDKModule = "unikraft.com/cloud/sdk"
 // same spec always renders the same go.mod.
 const DefaultPlatformSDKVersion = "v0.3.1-0.20260805103859-eb7d6dc4c53c"
 
-// JSONModule is the module path of the JSON implementation that generated
-// models depend on: their MarshalJSON/UnmarshalJSON delegate to it so that the
-// AdditionalProperties field, tagged `json:",embed"`, round-trips unknown
-// object members.
-const JSONModule = "github.com/go-json-experiment/json"
-
-// DefaultJSONVersion is the JSONModule version required by generated modules.
-// Like DefaultPlatformSDKVersion it is a pinned constant so that the same spec
-// always renders the same go.mod.
-const DefaultJSONVersion = "v0.0.0-20260623181947-01eb4420fa68"
-
 // WebsocketModule is the module path of the WebSocket implementation a
 // generated client dials with, when its spec has an operation that answers
 // 101 Switching Protocols.  A client without one does not import it.
@@ -102,10 +91,6 @@ type Options struct {
 	// PlatformSDKVersion is the version of PlatformSDKModule required by an
 	// emitted go.mod.  Empty means DefaultPlatformSDKVersion.
 	PlatformSDKVersion string
-
-	// JSONVersion is the version of JSONModule required by an emitted go.mod.
-	// Empty means DefaultJSONVersion.
-	JSONVersion string
 
 	// EmitGoMod requests that a go.mod be rendered alongside the sources,
 	// making the output a self-contained module.
@@ -197,13 +182,11 @@ func Render(ctx context.Context, opts Options) (*Module, error) {
 
 // requirements lists the modules the rendered sources depend on, in
 // module-path order, which is where `go mod tidy` would leave them.  The
-// platform SDK and JSONModule are always direct: the client calls into the one
-// and the models marshal through the other.  WebsocketModule is imported only
+// platform SDK is always direct: the client calls into it.  WebsocketModule is imported only
 // by a client with an operation to dial, so it is required when the sources
 // import it.
 func requirements(opts Options, files []generator.File) []Requirement {
 	reqs := []Requirement{
-		{JSONModule, cmp.Or(opts.JSONVersion, DefaultJSONVersion)},
 		{PlatformSDKModule, cmp.Or(opts.PlatformSDKVersion, DefaultPlatformSDKVersion)},
 	}
 

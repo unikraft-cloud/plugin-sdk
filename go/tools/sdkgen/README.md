@@ -40,11 +40,9 @@ go run unikraft.com/cloud/pluginsdk/tools/sdkgen@prod-staging \
 ```
 
 Beyond the Go standard library, the generated client depends on the Unikraft
-Cloud platform SDK (`unikraft.com/cloud/sdk`) and on
-`github.com/go-json-experiment/json`, which the generated models marshal
-through so that unknown object members round-trip through
-`AdditionalProperties`. Without `--emit-go-mod` you own both `require` lines,
-and `sdkgen` prints the pinned versions it generated against.
+Cloud platform SDK (`unikraft.com/cloud/sdk`). Without `--emit-go-mod` you own
+the `require` lines, and `sdkgen` prints the pinned versions it generated
+against.
 
 ### Generate a module proxy tree (for publishing)
 
@@ -160,7 +158,7 @@ to the tip commit, which would mint a new version on every push.
 
 Everything else that lands in the artifacts is pinned rather than sensed: the
 `go` directive (`--go-version`), the platform SDK requirement
-(`--platform-sdk-version`), the JSON requirement (`--json-version`), the
+(`--platform-sdk-version`), the
 template set (embedded), file order (sorted) and
 zip timestamps (zeroed). The same spec therefore renders byte-identical
 artifacts on any machine — which is what makes a published version safe to
@@ -320,7 +318,6 @@ testing.
 | `--emit-go-mod`          | `..._EMIT_GO_MOD`                    | `false`               | Also write a `go.mod` (always on for `--format=proxy`).                 |
 | `--go-version`           | `..._GO_VERSION`                     | pinned                | `go` directive written into the generated `go.mod`.                     |
 | `--platform-sdk-version` | `..._PLATFORM_SDK_VERSION`           | pinned                | Version of `unikraft.com/cloud/sdk` required by the generated `go.mod`. |
-| `--json-version`         | `..._JSON_VERSION`                   | pinned                | Version of `github.com/go-json-experiment/json` required by `go.mod`.   |
 | `--module-version`       | `..._MODULE_VERSION`                 | derived, else `0.0.0` | SDK version: reported in its `User-Agent`, and published as.            |
 | `--commit-time`          | `..._COMMIT_TIME`                    | resolved with git     | RFC3339 commit time of the spec, used in the derived pseudo-version.    |
 | `--prior-versions`       | `..._PRIOR_VERSIONS`                 | none                  | Versions already published for this module, merged into `@v/list`.      |
@@ -347,7 +344,7 @@ Rendered from the templates in [`templates/`](templates) (embedded via
 | `utils.gen.go`    | SSE, query and header helpers                                    |
 | `dial.gen.go`, `dial_js.gen.go` | the WebSocket dial per build, only for a spec that upgrades |
 | `doc.gen.go`      | package doc                                                      |
-| `go.mod`          | `module <module>` + pinned `require`s (platform SDK, JSON, and coder/websocket when the spec upgrades) |
+| `go.mod`          | `module <module>` + pinned `require`s (platform SDK, and coder/websocket when the spec upgrades) |
 
 ---
 

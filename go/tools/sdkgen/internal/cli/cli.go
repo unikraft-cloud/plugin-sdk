@@ -57,7 +57,6 @@ type PluginSdkgenCLI struct {
 	EmitGoMod          bool   `name:"emit-go-mod" help:"Also write a go.mod, making the output a self-contained module (always on for --format=proxy)." yaml:"-" json:"-"`
 	GoVersion          string `name:"go-version" help:"go directive written into the generated go.mod (default: pinned)." placeholder:"version" yaml:"-" json:"-"`
 	PlatformSDKVersion string `name:"platform-sdk-version" help:"Version of unikraft.com/cloud/sdk required by the generated go.mod (default: pinned)." placeholder:"version" yaml:"-" json:"-"`
-	JSONVersion        string `name:"json-version" help:"Version of github.com/go-json-experiment/json required by the generated go.mod (default: pinned)." placeholder:"version" yaml:"-" json:"-"`
 
 	// Version, reported in the generated client's User-Agent and, for
 	// --format=proxy, published as.
