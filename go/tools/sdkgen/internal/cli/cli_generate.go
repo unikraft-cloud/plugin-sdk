@@ -61,7 +61,6 @@ func (cmd *PluginSdkgenCLI) Run() error {
 		Version:            version,
 		GoVersion:          cmd.GoVersion,
 		PlatformSDKVersion: cmd.PlatformSDKVersion,
-		JSONVersion:        cmd.JSONVersion,
 		EmitGoMod:          proxy || cmd.EmitGoMod,
 	})
 	if err != nil {
@@ -133,14 +132,11 @@ func (cmd *PluginSdkgenCLI) writeSources(ctx context.Context, module *sdk.Module
 	if module.GoMod == nil {
 		// The sources are compiled as part of the caller's module, so the
 		// caller — not sdkgen — owns the requirements of the generated client.
-		for _, dep := range []struct{ module, version string }{
-			{sdk.PlatformSDKModule, sdk.DefaultPlatformSDKVersion},
-			{sdk.JSONModule, sdk.DefaultJSONVersion},
-		} {
+		for _, dep := range module.Requires {
 			log.G(ctx).
 				Info().
-				Str("module", dep.module).
-				Str("version", dep.version).
+				Str("module", dep.Module).
+				Str("version", dep.Version).
 				Msg("add this requirement to your go.mod to build the generated client")
 		}
 	}

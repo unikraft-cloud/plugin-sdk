@@ -325,8 +325,8 @@ components:
           - $ref: '#/components/schemas/ArgvSpec'
 `
 
-// renderSpec renders spec and returns the generated model source.
-func renderSpec(t *testing.T, spec string) string {
+// writeSpec writes spec into a temporary directory and returns its path.
+func writeSpec(t *testing.T, spec string) string {
 	t.Helper()
 
 	path := filepath.Join(t.TempDir(), "api.yaml")
@@ -334,24 +334,46 @@ func renderSpec(t *testing.T, spec string) string {
 		t.Fatal(err)
 	}
 
+	return path
+}
+
+// renderModule renders spec as a self-contained module.
+func renderModule(t *testing.T, spec string) *sdk.Module {
+	t.Helper()
+
 	module, err := sdk.Render(t.Context(), sdk.Options{
-		SpecPath: path,
-		Module:   sdk.PublishedModulePath(pluginName),
-		Package:  pluginName,
+		SpecPath:  writeSpec(t, spec),
+		Module:    sdk.PublishedModulePath(pluginName),
+		Package:   pluginName,
+		EmitGoMod: true,
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 
+	return module
+}
+
+// rendered returns the named file of module.
+func rendered(t *testing.T, module *sdk.Module, name string) string {
+	t.Helper()
+
 	for _, f := range module.Files {
-		if f.Name == "model.gen.go" {
+		if f.Name == name {
 			return string(f.Data)
 		}
 	}
 
-	t.Fatal("no model.gen.go was rendered")
+	t.Fatalf("no %s was rendered", name)
 
 	return ""
+}
+
+// renderSpec renders spec and returns the generated model source.
+func renderSpec(t *testing.T, spec string) string {
+	t.Helper()
+
+	return rendered(t, renderModule(t, spec), "model.gen.go")
 }
 
 func TestRenderAnyOfPropertyAsUnion(t *testing.T) {
@@ -383,5 +405,121 @@ func TestRenderNonObjectSchemaAsDefinedType(t *testing.T) {
 	// it as one leaves the union unable to decode the branch referencing it.
 	if want := "type ArgvSpec []string"; !strings.Contains(model, want) {
 		t.Errorf("model does not declare %q", want)
+	}
+}
+
+// wsSpec is a minimal specification whose single operation answers 101: it
+// upgrades to a WebSocket, so its method dials rather than exchanges envelopes.
+const wsSpec = `openapi: 3.0.0
+info:
+  title: Follow
+  version: v1.0.0
+paths:
+  /commands/{uuid}/ws:
+    get:
+      operationId: FollowCommand
+      summary: Follow Command
+      parameters:
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: stdout
+        in: query
+        schema:
+          type: integer
+          format: int64
+      responses:
+        "101":
+          description: Switching Protocols
+        default:
+          description: Why the command was not followed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmptyResponse'
+components:
+  schemas:
+    EmptyResponse:
+      type: object
+      properties:
+        status:
+          type: string
+`
+
+func TestRenderWebSocketOperation(t *testing.T) {
+	t.Parallel()
+
+	module := renderModule(t, wsSpec)
+
+	api := rendered(t, module, "api.gen.go")
+	for _, want := range []string{
+		`"` + sdk.WebsocketModule + `"`,
+		"func (c *Client) FollowCommand(ctx context.Context, instance platform.Instance, uuid string, params *FollowCommandOpts, opts ...Option) (*websocket.Conn, error)",
+		"return doDial(ctx, c, instance, opPath, opts...)",
+	} {
+		if !strings.Contains(api, want) {
+			t.Errorf("api does not contain %q", want)
+		}
+	}
+
+	// The dial is the one platform-specific piece: a browser's WebSocket
+	// carries no bearer token, so that build refuses rather than is refused.
+	if !strings.Contains(rendered(t, module, "dial.gen.go"), "//go:build !js") {
+		t.Error("dial.gen.go is not the non-browser build")
+	}
+	if !strings.Contains(rendered(t, module, "dial_js.gen.go"), "errors.ErrUnsupported") {
+		t.Error("dial_js.gen.go does not refuse to dial")
+	}
+
+	want := "require (\n" +
+		"\t" + sdk.WebsocketModule + " " + sdk.DefaultWebsocketVersion + "\n" +
+		"\t" + sdk.PlatformSDKModule + " " + sdk.DefaultPlatformSDKVersion + "\n" +
+		")\n"
+	if got := string(module.GoMod); !strings.Contains(got, want) {
+		t.Errorf("go.mod is\n%s\nwant it to require\n%s", got, want)
+	}
+}
+
+func TestRenderWithoutWebSocketOmitsDial(t *testing.T) {
+	t.Parallel()
+
+	module := renderModule(t, unionSpec)
+
+	for _, f := range module.Files {
+		if strings.Contains(string(f.Data), sdk.WebsocketModule) {
+			t.Errorf("%s mentions %s, which nothing dials", f.Name, sdk.WebsocketModule)
+		}
+	}
+}
+
+func TestRenderRefusesWebSocketMisuse(t *testing.T) {
+	t.Parallel()
+
+	for _, tc := range []struct{ name, spec, want string }{
+		{
+			name: "not a GET",
+			spec: strings.Replace(wsSpec, "get:", "post:", 1),
+			want: "answers 101 but is a POST",
+		},
+		{
+			name: "readiness probe",
+			spec: strings.Replace(wsSpec, "summary: Follow Command", "summary: Follow Command\n      x-unikraft-plugin-readiness: true", 1),
+			want: "upgrades to a WebSocket; a readiness probe",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			_, err := sdk.Render(t.Context(), sdk.Options{
+				SpecPath: writeSpec(t, tc.spec),
+				Module:   sdk.PublishedModulePath(pluginName),
+				Package:  pluginName,
+			})
+			if err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Errorf("Render() error = %v, want one containing %q", err, tc.want)
+			}
+		})
 	}
 }

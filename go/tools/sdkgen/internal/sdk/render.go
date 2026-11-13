@@ -7,10 +7,13 @@
 package sdk
 
 import (
+	"bytes"
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
 	"os"
+	"slices"
 	"sort"
 
 	"unikraft.com/x/tools/openapi-gen/generator"
@@ -38,16 +41,14 @@ const PlatformSDKModule = "unikraft.com/cloud/sdk"
 // same spec always renders the same go.mod.
 const DefaultPlatformSDKVersion = "v0.3.1-0.20260805103859-eb7d6dc4c53c"
 
-// JSONModule is the module path of the JSON implementation that generated
-// models depend on: their MarshalJSON/UnmarshalJSON delegate to it so that the
-// AdditionalProperties field, tagged `json:",embed"`, round-trips unknown
-// object members.
-const JSONModule = "github.com/go-json-experiment/json"
+// WebsocketModule is the module path of the WebSocket implementation a
+// generated client dials with, when its spec has an operation that answers
+// 101 Switching Protocols.  A client without one does not import it.
+const WebsocketModule = "github.com/coder/websocket"
 
-// DefaultJSONVersion is the JSONModule version required by generated modules.
-// Like DefaultPlatformSDKVersion it is a pinned constant so that the same spec
-// always renders the same go.mod.
-const DefaultJSONVersion = "v0.0.0-20260623181947-01eb4420fa68"
+// DefaultWebsocketVersion is the WebsocketModule version required by generated
+// modules that dial.  Pinned like the others, for the same reason.
+const DefaultWebsocketVersion = "v1.8.15"
 
 // DefaultGoVersion is the go directive written into generated modules.  Like
 // the platform SDK version it is pinned, not taken from the toolchain that
@@ -91,10 +92,6 @@ type Options struct {
 	// emitted go.mod.  Empty means DefaultPlatformSDKVersion.
 	PlatformSDKVersion string
 
-	// JSONVersion is the version of JSONModule required by an emitted go.mod.
-	// Empty means DefaultJSONVersion.
-	JSONVersion string
-
 	// EmitGoMod requests that a go.mod be rendered alongside the sources,
 	// making the output a self-contained module.
 	EmitGoMod bool
@@ -111,6 +108,16 @@ type Module struct {
 
 	// GoMod is the rendered go.mod, or nil when none was requested.
 	GoMod []byte
+
+	// Requires are the modules the rendered sources depend on, at the versions
+	// an emitted go.mod pins, in module-path order.
+	Requires []Requirement
+}
+
+// Requirement is a module a rendered SDK depends on.
+type Requirement struct {
+	Module  string
+	Version string
 }
 
 // Render generates the SDK for a plugin in memory.  Nothing is written to disk
@@ -154,10 +161,10 @@ func Render(ctx context.Context, opts Options) (*Module, error) {
 		return nil, fmt.Errorf("rendering sdk: %w", err)
 	}
 
-	out := &Module{Path: opts.Module, Files: files}
+	out := &Module{Path: opts.Module, Files: files, Requires: requirements(opts, files)}
 
 	if opts.EmitGoMod {
-		out.GoMod = goMod(opts)
+		out.GoMod = goMod(opts, out.Requires)
 		out.Files = append(out.Files, generator.File{
 			Name: GoModFile,
 			Data: out.GoMod,
@@ -173,32 +180,35 @@ func Render(ctx context.Context, opts Options) (*Module, error) {
 	return out, nil
 }
 
+// requirements lists the modules the rendered sources depend on, in
+// module-path order, which is where `go mod tidy` would leave them.  The
+// platform SDK is always direct: the client calls into it.  WebsocketModule is imported only
+// by a client with an operation to dial, so it is required when the sources
+// import it.
+func requirements(opts Options, files []generator.File) []Requirement {
+	reqs := []Requirement{
+		{PlatformSDKModule, cmp.Or(opts.PlatformSDKVersion, DefaultPlatformSDKVersion)},
+	}
+
+	if slices.ContainsFunc(files, func(f generator.File) bool {
+		return bytes.Contains(f.Data, []byte(`"`+WebsocketModule+`"`))
+	}) {
+		reqs = append(reqs, Requirement{WebsocketModule, DefaultWebsocketVersion})
+	}
+
+	slices.SortFunc(reqs, func(a, b Requirement) int { return cmp.Compare(a.Module, b.Module) })
+
+	return reqs
+}
+
 // goMod renders the module file of a generated SDK.
-func goMod(opts Options) []byte {
-	goVersion := opts.GoVersion
-	if goVersion == "" {
-		goVersion = DefaultGoVersion
+func goMod(opts Options, reqs []Requirement) []byte {
+	b := fmt.Appendf(nil, "module %s\n\ngo %s\n\nrequire (\n", opts.Module, cmp.Or(opts.GoVersion, DefaultGoVersion))
+	for _, r := range reqs {
+		b = fmt.Appendf(b, "\t%s %s\n", r.Module, r.Version)
 	}
 
-	sdkVersion := opts.PlatformSDKVersion
-	if sdkVersion == "" {
-		sdkVersion = DefaultPlatformSDKVersion
-	}
-
-	jsonVersion := opts.JSONVersion
-	if jsonVersion == "" {
-		jsonVersion = DefaultJSONVersion
-	}
-
-	// Both requirements are direct: the client calls into the platform SDK, and
-	// the models marshal through JSONModule.  They are listed in module-path
-	// order, which is where `go mod tidy` would leave them.
-	return fmt.Appendf(nil,
-		"module %s\n\ngo %s\n\nrequire (\n\t%s %s\n\t%s %s\n)\n",
-		opts.Module, goVersion,
-		JSONModule, jsonVersion,
-		PlatformSDKModule, sdkVersion,
-	)
+	return append(b, ")\n"...)
 }
 
 // WriteTo writes every rendered file into dir, creating it (and any parent
