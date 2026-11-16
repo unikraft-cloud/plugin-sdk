@@ -112,9 +112,12 @@ func NewRootCmd(ctx context.Context, stdin io.Reader, stdout, stderr io.Writer) 
 		level = log.InfoLevel
 	}
 
-	cli.Context = log.WithLogger(
-		cli.Context, log.New(stdout, cli.LogType, level),
-	)
+	logger, _ := log.New(cli.Context, log.Config{
+		Sink:  stdout,
+		Type:  cli.LogType,
+		Level: level,
+	})
+	cli.Context = log.WithLogger(cli.Context, logger)
 
 	//nolint:contextcheck // logger context is initialized above and intentionally reused.
 	log.G(cli.Context).

@@ -215,7 +215,11 @@ func newSettings(name, version string, opts []Option) *settings {
 // configureLogging installs a logger derived from the settings into ctx, unless
 // one is already present.
 func configureLogging(ctx context.Context, s *settings) context.Context {
-	logger := log.New(os.Stdout, s.logType, s.logLevel)
+	logger, _ := log.New(ctx, log.Config{
+		Sink:  os.Stdout,
+		Type:  s.logType,
+		Level: s.logLevel,
+	})
 	ctx = log.WithLogger(ctx, logger)
 
 	log.G(ctx).
