@@ -39,7 +39,7 @@ const PlatformSDKModule = "unikraft.com/cloud/sdk"
 //
 // It is a pinned constant rather than a resolved-at-runtime value so that the
 // same spec always renders the same go.mod.
-const DefaultPlatformSDKVersion = "v0.3.1-0.20260805103859-eb7d6dc4c53c"
+const DefaultPlatformSDKVersion = "v0.4.3-staging.1.0.20261117101904-48a3208db667"
 
 // WebsocketModule is the module path of the WebSocket implementation a
 // generated client dials with, when its spec has an operation that answers

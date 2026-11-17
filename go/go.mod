@@ -3,10 +3,10 @@ module unikraft.com/cloud/pluginsdk
 go 1.27.4
 
 require (
-	github.com/alecthomas/kong v1.15.0
+	github.com/alecthomas/kong v1.16.1
 	github.com/ettle/strcase v0.2.0
 	github.com/gin-gonic/gin v1.12.0
-	unikraft.com/cloud/sdk v0.3.1-0.20260724112216-eca98f84e2dc
+	unikraft.com/cloud/sdk v0.4.3-staging.1.0.20261117101904-48a3208db667
 	unikraft.com/x/log v0.0.0-20261116145447-f4dbf6ae0056
 	unikraft.com/x/middleware v0.0.0-20260811021335-23b51b9e5a8a
 )
@@ -22,7 +22,6 @@ require (
 	github.com/gabriel-vasile/mimetype v1.4.12 // indirect
 	github.com/gin-contrib/cors v1.7.7 // indirect
 	github.com/gin-contrib/sse v1.1.0 // indirect
-	github.com/go-json-experiment/json v0.0.0-20260623181947-01eb4420fa68 // indirect
 	github.com/go-logr/logr v1.4.4 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-playground/locales v0.14.1 // indirect
@@ -51,9 +50,9 @@ require (
 	go.opentelemetry.io/otel/metric v1.47.0 // indirect
 	go.opentelemetry.io/otel/trace v1.47.0 // indirect
 	golang.org/x/arch v0.23.0 // indirect
-	golang.org/x/crypto v0.54.0 // indirect
-	golang.org/x/net v0.57.0 // indirect
+	golang.org/x/crypto v0.57.0 // indirect
+	golang.org/x/net v0.59.0 // indirect
 	golang.org/x/sys v0.50.0 // indirect
-	golang.org/x/text v0.40.0 // indirect
+	golang.org/x/text v0.42.0 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
 )

@@ -10,7 +10,7 @@ import (
 	"io"
 	"net/url"
 
-	"unikraft.com/cloud/sdk/platform"
+	platform "unikraft.com/cloud/sdk/platform/gen"
 )
 
 // Ensure imports are used: a spec need not exercise every one of them, and a
