@@ -25,8 +25,6 @@ import (
 
 	"github.com/coder/websocket"
 {{- end }}
-
-	platform "unikraft.com/cloud/sdk/platform/gen"
 )
 
 // Ensure imports are used: a spec need not exercise every one of them, and a
@@ -38,7 +36,6 @@ var (
 	_ = fmt.Sprintf
 	_ io.Reader
 	_ = url.Values{}
-	_ platform.Instance
 )
 {{ range $pathOp := .Operations }}
 {{- $op := $pathOp.Operation }}
@@ -212,7 +209,7 @@ type {{ pascalcase $op.OperationID }}Opts struct {
 // It targets the {{ $.Var "package" "" }} plugin running on the given instance,
 // reached through the instance's authenticated plugin endpoint
 // ({{ "<endpoint>" }}/v1/instances/{{ "<uuid>" }}/plugins/{{ "<plugin>" }}).
-func (c *Client) {{ pascalcase $op.OperationID }}(ctx context.Context, instance platform.Instance
+func (c *Client) {{ pascalcase $op.OperationID }}(ctx context.Context, instance Instance
 {{- range $op.Parameters -}}
 {{- if .Value.Required -}}
 , {{ goSafeName (camelcase .Value.Name) }} {{ paramToGoType .Value }}
