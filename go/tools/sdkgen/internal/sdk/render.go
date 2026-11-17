@@ -22,24 +22,19 @@ import (
 )
 
 // PlatformSDKModule is the module path of the Unikraft Cloud platform SDK that
-// generated clients depend on: every generated operation accepts a
-// platform.Instance and derives the plugin endpoint and bearer token from it.
+// generated clients use internally, for the response envelope and the
+// endpoint and environment defaults.
 const PlatformSDKModule = "unikraft.com/cloud/sdk"
 
 // DefaultPlatformSDKVersion is the platform SDK version required by generated
-// modules.  It must resolve to a platform SDK that exposes the client options a
-// plugin client is built from (ClientOption, ClientOptions.Token,
-// ClientOptions.DefaultEndpoint, ClientOptions.UserAgent), the endpoint
-// derivation it mirrors (EndpointForMetro, DefaultMetro), a value-typed
-// Instance.Uuid, and the ResponseStatus and ResponseError carried by the
-// generated Response envelope.
-//
-// ResponseStatusPartialSuccess is the newest of those requirements: it landed
-// in v0.3.1-0.20260724112216-eca98f84e2dc, so this cannot be pinned below that.
+// modules.  It must resolve to a platform SDK whose platform/gen package has
+// the response envelope (ResponseStatus, ResponseError), the endpoint defaults
+// (EndpointForMetro, DefaultMetro) and the environment helpers (TokenFromEnv,
+// MetroFromEnv).  TokenFromEnv and MetroFromEnv are the newest of those.
 //
 // It is a pinned constant rather than a resolved-at-runtime value so that the
 // same spec always renders the same go.mod.
-const DefaultPlatformSDKVersion = "v0.4.3-staging.1.0.20261117090833-765a6d1296c0"
+const DefaultPlatformSDKVersion = "v0.4.3-staging.1.0.20261117101904-48a3208db667"
 
 // WebsocketModule is the module path of the WebSocket implementation a
 // generated client dials with, when its spec has an operation that answers

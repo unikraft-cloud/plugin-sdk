@@ -6,7 +6,7 @@ require (
 	github.com/alecthomas/kong v1.16.1
 	github.com/ettle/strcase v0.2.0
 	github.com/gin-gonic/gin v1.12.0
-	unikraft.com/cloud/sdk v0.4.3-staging.1.0.20261117090833-765a6d1296c0
+	unikraft.com/cloud/sdk v0.4.3-staging.1.0.20261117101904-48a3208db667
 	unikraft.com/x/log v0.0.0-20261116145447-f4dbf6ae0056
 	unikraft.com/x/middleware v0.0.0-20260811021335-23b51b9e5a8a
 )
