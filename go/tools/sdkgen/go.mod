@@ -3,9 +3,9 @@ module unikraft.com/cloud/pluginsdk/tools/sdkgen
 go 1.27.4
 
 require (
-	github.com/alecthomas/kong v1.16.0
+	github.com/alecthomas/kong v1.17.0
 	github.com/juju/errors v1.0.0
-	golang.org/x/mod v0.38.0
+	golang.org/x/mod v0.43.0
 	gopkg.in/yaml.v3 v3.0.1
 	unikraft.com/x/kingkong v0.0.0-20260713183529-fd34645687a0
 	unikraft.com/x/log v0.0.0-20261116145447-f4dbf6ae0056
@@ -74,12 +74,11 @@ require (
 	go.opentelemetry.io/otel/log v1.47.0 // indirect
 	go.opentelemetry.io/otel/metric v1.47.0 // indirect
 	go.opentelemetry.io/otel/trace v1.47.0 // indirect
-	golang.org/x/crypto v0.54.0 // indirect
-	golang.org/x/net v0.57.0 // indirect
-	golang.org/x/sync v0.22.0 // indirect
+	golang.org/x/crypto v0.58.0 // indirect
+	golang.org/x/net v0.61.0 // indirect
+	golang.org/x/sync v0.24.0 // indirect
 	golang.org/x/sys v0.50.0 // indirect
-	golang.org/x/text v0.40.0 // indirect
-	golang.org/x/tools v0.48.0 // indirect
+	golang.org/x/text v0.43.0 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 	unikraft.com/x/colors v0.0.0-20260710212606-b68ba398853d // indirect
 	unikraft.com/x/guesstermwidth v0.0.0-20260708141520-0cbb0a92056b // indirect
