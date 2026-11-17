@@ -1,0 +1,40 @@
+version: 2
+
+updates:
+# Dependabot doesn't support Go workspaces, so it visits each module on its own.
+- package-ecosystem: gomod
+  directories:
+  - /go
+  - /go/**/*
+  schedule:
+    interval: weekly
+    day: sunday
+    time: '09:00'
+  commit-message:
+    prefix: gomod
+    include: scope
+  groups:
+    go-deps:
+      applies-to: version-updates
+      patterns:
+      - '*'
+    go-security:
+      applies-to: security-updates
+      patterns:
+      - '*'
+
+- package-ecosystem: github-actions
+  directory: /
+  schedule:
+    interval: weekly
+    day: sunday
+    time: '09:00'
+  groups:
+    github-deps:
+      applies-to: version-updates
+      patterns:
+      - '*'
+    github-security:
+      applies-to: security-updates
+      patterns:
+      - '*'
