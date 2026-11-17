@@ -10,9 +10,7 @@ import (
 	"bytes"
 	"cmp"
 	"context"
-	"errors"
 	"fmt"
-	"os"
 	"slices"
 	"sort"
 
@@ -62,8 +60,6 @@ const DefaultVersion = "0.0.0"
 
 // GoModFile is the name of the module file inside a generated module.
 const GoModFile = "go.mod"
-
-var errNoTemplates = errors.New("no embedded SDK templates found")
 
 // Options describes a single SDK rendering.
 type Options struct {
@@ -120,26 +116,10 @@ type Requirement struct {
 	Version string
 }
 
-// Render generates the SDK for a plugin in memory.  Nothing is written to disk
-// beyond a throwaway directory holding the embedded templates, which the
-// generator reads from a path.
+// Render generates the SDK for a plugin in memory.  Nothing is written to disk.
 func Render(ctx context.Context, opts Options) (*Module, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
-	}
-
-	tmplDir, err := os.MkdirTemp("", "sdkgen-tmpl-*")
-	if err != nil {
-		return nil, fmt.Errorf("creating template dir: %w", err)
-	}
-	defer os.RemoveAll(tmplDir)
-
-	n, err := templates.Materialise(tmplDir)
-	if err != nil {
-		return nil, fmt.Errorf("materialising templates: %w", err)
-	}
-	if n == 0 {
-		return nil, errNoTemplates
 	}
 
 	sdkVersion := opts.Version
@@ -151,7 +131,7 @@ func Render(ctx context.Context, opts Options) (*Module, error) {
 		"package":      opts.Package,
 		"base_package": opts.Module,
 		"version":      sdkVersion,
-	}, tmplDir)
+	}, templates.FS)
 	if err != nil {
 		return nil, fmt.Errorf("creating generator: %w", err)
 	}
