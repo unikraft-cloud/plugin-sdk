@@ -15,7 +15,7 @@ import (
 //
 // It is the same envelope the platform API itself returns, and the one the
 // server-side plugin framework serves — plugin handlers answer with a
-// platform.Response — so a plugin client reads the same way as the platform
+// pluginsdk.Response — so a plugin client reads the same way as the platform
 // SDK: standard HTTP status codes indicate success or failure, and the response
 // body carries the detail of the result in a JSON object whose data member
 // holds the payload of the operation.

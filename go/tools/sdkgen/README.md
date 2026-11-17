@@ -40,7 +40,8 @@ go run unikraft.com/cloud/pluginsdk/tools/sdkgen@prod-staging \
 ```
 
 Beyond the Go standard library, the generated client depends on the Unikraft
-Cloud platform SDK (`unikraft.com/cloud/sdk`). Without `--emit-go-mod` you own
+Cloud platform SDK (`unikraft.com/cloud/sdk`) internally. Its exported API does
+not use platform SDK types, so callers do not import it. Without `--emit-go-mod` you own
 the `require` lines, and `sdkgen` prints the pinned versions it generated
 against.
 
@@ -115,11 +116,11 @@ Two helpers are then rendered into `client.gen.go`, alongside a
 
 ```go
 // one probe: nil when the plugin answered, the call's error otherwise
-func (c *Client) Ready(ctx context.Context, instance platform.Instance, opts ...Option) error
+func (c *Client) Ready(ctx context.Context, instance Instance, opts ...Option) error
 
 // polls Ready with a backoff (250ms, doubling, capped at 2s) until it answers,
 // timeout elapses, or ctx is cancelled
-func (c *Client) WaitReady(ctx context.Context, instance platform.Instance, timeout time.Duration, opts ...Option) error
+func (c *Client) WaitReady(ctx context.Context, instance Instance, timeout time.Duration, opts ...Option) error
 ```
 
 The probe must be callable with nothing but the instance, so `sdkgen` **fails**
@@ -177,13 +178,15 @@ rendered output.
 `--module-version` applies to `--format=source` too, where there is no module to
 publish but the client still reports a version. Sources rendered without it fall
 back to `0.0.0`. To override the whole header at runtime instead, pass
-`platform.WithUserAgent` to `NewClient`, or `WithUserAgent` per call.
+`WithUserAgent` to `NewClient`, or per call.
 
 ## Consuming a generated SDK
 
-Each operation is a method on a `Client` that takes a `platform.Instance` and
-derives the plugin's authenticated endpoint
-(`<endpoint>/v1/instances/<uuid>/plugins/<plugin>`) and bearer token from it:
+Each operation is a method on a `Client` that takes an `Instance` and reaches
+the plugin through the instance's authenticated endpoint
+(`<endpoint>/v1/instances/<uuid>/plugins/<plugin>`). `Instance` is an interface
+with one method, `UUID() string`. Use `InstanceUUID` when you have only the
+UUID:
 
 ```go
 package main
@@ -192,33 +195,20 @@ import (
 	"context"
 	"fmt"
 
-	"unikraft.com/cloud/sdk/platform"
-
 	exampleplug "unikraft.com/cloud/plugins/example"
 )
 
 func main() {
 	ctx := context.Background()
 
-	clientOpts := []platform.ClientOption{
-		platform.WithToken("..."),
-		platform.WithDefaultMetro("fra"),
-	}
+	client := exampleplug.NewClient(
+		exampleplug.WithToken("..."),
+		exampleplug.WithMetro("fra"),
+	)
 
-	client := platform.NewClient(clientOpts...)
+	instance := exampleplug.InstanceUUID("00000000-0000-0000-0000-000000000000")
 
-	resp, err := client.GetInstanceByUUID(ctx, "00000000-0000-0000-0000-000000000000", platform.GetInstanceByUUIDOpts{})
-	if err != nil {
-		panic(err)
-	}
-	if resp.Data == nil || len(resp.Data.Instances) == 0 {
-		panic("instance not found")
-	}
-	instance := resp.Data.Instances[0]
-
-	exampleClient := exampleplug.NewClient(clientOpts...)
-
-	greeting, err := exampleClient.Greet(ctx, instance, "Alex")
+	greeting, err := client.Greet(ctx, instance, "Alex")
 	if err != nil {
 		panic(err)
 	}
@@ -226,19 +216,25 @@ func main() {
 }
 ```
 
+`NewClient` takes the same `Option`s as an operation: they set the
+configuration of every call, and the options of a call override them. When no
+token is set, `NewClient` reads `UKC_TOKEN`, `UNIKRAFT_CLOUD_TOKEN` or
+`KRAFTCLOUD_TOKEN`. When no endpoint or metro is set, it reads `UKC_METRO`, and
+then uses the default metro of the platform API.
+
 ### The response envelope
 
 An operation returns `*Response[T]`, the same envelope the platform API returns
 and the one the server-side framework serves — a plugin handler answers with a
-`platform.Response`, so the two ends read the same way:
+`pluginsdk.Response`, so the two ends read the same way:
 
 ```go
 type Response[T any] struct {
-	Status   string                   // "success", "partial_success" or "error"
-	Message  string                   // set on "partial_success" and "error"
-	Errors   []platform.ResponseError // the per-object errors
-	Data     *T                       // the payload of the operation
-	OpTimeUs uint64                   // processing time, in microseconds
+	Status   string          // "success", "partial_success" or "error"
+	Message  string          // set on "partial_success" and "error"
+	Errors   []ResponseError // the per-object errors, each with a Status
+	Data     *T              // the payload of the operation
+	OpTimeUs uint64          // processing time, in microseconds
 }
 ```
 
@@ -280,13 +276,12 @@ platform-specific piece of a client: a browser's WebSocket carries no bearer
 token, so the `js` build refuses to dial. Only a spec with such an operation
 imports the library.
 
-`Status` is a `platform.ResponseStatus`, so it compares against
-`platform.ResponseStatusSuccess`, `…Error` and `…PartialSuccess` rather than
-against bare strings — the same constants a plugin handler answers with.
+Read `Status` with `IsSuccess`, `IsPartialSuccess` and `IsError` rather than
+against bare strings.
 
 Because the envelope and its helpers live in the generated package, these names
 are reserved: a spec whose schemas would render as `Response`, `APIError`,
-`ErrorResponse`, `Client` or `Version` collides with them and fails to compile.
+`ErrorResponse`, `Client`, `Instance`, `InstanceUUID` or `Version` collides with them and fails to compile.
 Plugin specs generated from TypeSpec name their envelopes `<Operation>Response`,
 so this does not arise in practice.
 
@@ -337,7 +332,7 @@ Rendered from the templates in [`templates/`](templates) (embedded via
 | File              | Contents                                                         |
 | ----------------- | ---------------------------------------------------------------- |
 | `client.gen.go`   | `Client`, `Option`s, the transport: endpoint/token derivation, and the readiness helpers |
-| `api.gen.go`      | one method per OpenAPI operation, taking a `platform.Instance`   |
+| `api.gen.go`      | one method per OpenAPI operation, taking an `Instance`           |
 | `response.gen.go` | the generic `Response[T]` envelope                               |
 | `model.gen.go`    | request/response models and enums                                |
 | `errors.gen.go`   | `APIError` / `ErrorResponse` helpers                             |
