@@ -7,7 +7,7 @@ import (
 	"errors"
 	"net/http"
 
-	"unikraft.com/cloud/sdk/platform"
+	platform "unikraft.com/cloud/sdk/platform/gen"
 )
 
 // Response is the envelope of an invocation of a plugin API on the Unikraft

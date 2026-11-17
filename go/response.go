@@ -6,7 +6,7 @@ package pluginsdk
 import (
 	"net/http"
 
-	"unikraft.com/cloud/sdk/platform"
+	platform "unikraft.com/cloud/sdk/platform/gen"
 )
 
 // OK wraps a payload as a success envelope.

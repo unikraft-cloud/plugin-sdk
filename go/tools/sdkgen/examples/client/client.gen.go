@@ -15,7 +15,7 @@ import (
 	"strings"
 	"time"
 
-	"unikraft.com/cloud/sdk/platform"
+	platform "unikraft.com/cloud/sdk/platform/gen"
 )
 
 const (
