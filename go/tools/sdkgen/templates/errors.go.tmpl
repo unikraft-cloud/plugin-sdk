@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"strings"
 
-	"unikraft.com/cloud/sdk/platform"
+	platform "unikraft.com/cloud/sdk/platform/gen"
 )
 
 // ErrorResponse is the shape of an error body that is not a plugin envelope.

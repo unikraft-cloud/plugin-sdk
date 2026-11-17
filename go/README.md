@@ -223,6 +223,10 @@ Register: func(ctx context.Context, cfg *Config, engine *gin.Engine) error {
 triple that the generated handler methods are expected to produce, so a handler
 method body is usually a single `return pluginsdk.OK(&data)`.
 
+Generate the service with `-v response_package=unikraft.com/cloud/pluginsdk`,
+so that the handler methods use `pluginsdk.Response[T]` and the plugin does
+not import the platform SDK.
+
 [typespec]: https://typespec.io
 [middleware]: https://unikraft.com/x/middleware
 
@@ -232,8 +236,9 @@ method body is usually a single `return pluginsdk.OK(&data)`.
 
 The envelope itself is described in
 [the top-level README](../README.md#4-responses). In Go it is
-`platform.Response[T]` from `unikraft.com/cloud/sdk/platform` — the SDK does not
-define its own envelope type. Two helpers construct it:
+`pluginsdk.Response[T]`, an alias of the platform API envelope
+`Response[T]` in `unikraft.com/cloud/sdk/platform/gen`. Plugins do not import
+the platform SDK. Two helpers construct it:
 
 ```go
 // Success. Note OK takes a *pointer* and returns three values.
@@ -362,8 +367,9 @@ handlers via `g.Request.Context()`.
 
 | Symbol                                                                   | Description                       |
 | ------------------------------------------------------------------------ | --------------------------------- |
-| `func OK[T any](data *T) (*platform.Response[T], int, error)`            | Success envelope wrapping `data`  |
-| `func Error[T any](status int, msg string) (platform.Response[T], int, error)` | Error envelope               |
+| `func OK[T any](data *T) (*Response[T], int, error)`                     | Success envelope wrapping `data`  |
+| `func Error[T any](status int, msg string) (Response[T], int, error)`    | Error envelope                    |
+| `type Response[T any]`, `ResponseStatus`, `ResponseError`                | Aliases of the platform envelope  |
 
 ### Other exported symbols
 

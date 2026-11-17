@@ -4,18 +4,19 @@ package widgets
 
 import (
 	"bytes"
+	"cmp"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"mime"
 	"net/http"
-	"os"
 	"strings"
 	"time"
 
-	"unikraft.com/cloud/sdk/platform"
+	platform "unikraft.com/cloud/sdk/platform/gen"
 )
 
 const (
@@ -35,84 +36,60 @@ const (
 	PluginName = "widgets"
 )
 
-// tokenEnvVars lists, in order of precedence, the environment variables from
-// which a Unikraft Cloud API token is read when no token is supplied
-// explicitly.  It mirrors the platform SDK's own precedence.
-var tokenEnvVars = []string{
-	"UKC_TOKEN",
-	"UNIKRAFT_CLOUD_TOKEN",
-	"KRAFTCLOUD_TOKEN",
+// Instance identifies the instance that runs the plugin.
+type Instance interface {
+	// UUID returns the UUID of the instance.
+	UUID() string
 }
+
+// InstanceUUID is an Instance identified only by its UUID.
+type InstanceUUID string
+
+// UUID returns the UUID of the instance.
+func (u InstanceUUID) UUID() string { return string(u) }
 
 // Client is a plugin API client bound to a set of Unikraft Cloud credentials
-// and endpoint configuration.  It is constructed with NewClient from the same
-// platform.ClientOption values used to build the platform SDK client, so the
-// metro (endpoint) and bearer token it carries match the platform client.  Its
-// generated operation methods each take the target platform.Instance and reach
-// the plugin through the instance's authenticated plugin endpoint
-// (<endpoint>/v1/instances/<uuid>/plugins/<plugin>).
+// and endpoint configuration.  Its generated operation methods each take the
+// target Instance and reach the plugin through the instance's authenticated
+// plugin endpoint (<endpoint>/v1/instances/<uuid>/plugins/<plugin>).
 type Client struct {
-	// endpoint is the API endpoint derived from the supplied options, falling
-	// back to the UKC_METRO environment variable and then the default metro.
-	endpoint string
-
-	// token is the bearer token used to authenticate plugin requests.
-	token string
-
-	// userAgent is the User-Agent header sent with plugin requests.
-	userAgent string
-
-	// pluginName is the "<plugin_name>" segment of the plugin endpoint path.
-	pluginName string
-
-	// httpClient performs the plugin HTTP requests.
-	httpClient *http.Client
+	// defaults is the configuration every call starts from.
+	defaults options
 }
 
-// NewClient creates a plugin client from the given platform client options,
-// the same ones passed to platform.NewClient.  The endpoint (metro) and bearer
-// token are taken from those options; when no token is supplied it falls back
-// to the UKC_TOKEN, UNIKRAFT_CLOUD_TOKEN and KRAFTCLOUD_TOKEN environment
-// variables, mirroring the platform SDK's own precedence.
-func NewClient(opts ...platform.ClientOption) *Client {
-	copts := &platform.ClientOptions{}
-	for _, opt := range opts {
-		opt(copts)
-	}
-
-	token := copts.Token()
-	if token == "" {
-		token = tokenFromEnv()
-	}
-
-	userAgent := copts.UserAgent()
-	if userAgent == "" {
-		userAgent = DefaultUserAgent
-	}
-
-	// Derive the endpoint from the options, mirroring platform.NewClient: an
-	// explicit endpoint/metro from the options, then the UKC_METRO environment
-	// variable, and finally the default metro.
-	endpoint := copts.DefaultEndpoint()
-	if endpoint == "" {
-		if metro := os.Getenv("UKC_METRO"); metro != "" {
-			endpoint = platform.EndpointForMetro(metro)
-		}
-	}
-	if endpoint == "" {
-		endpoint = platform.EndpointForMetro(platform.DefaultMetro)
-	}
-
-	return &Client{
-		endpoint:   endpoint,
-		token:      token,
-		userAgent:  userAgent,
+// NewClient creates a plugin client.  The options set the configuration of
+// every call; each call can override it with its own options.
+//
+// When no token is supplied, the token comes from the UKC_TOKEN,
+// UNIKRAFT_CLOUD_TOKEN or KRAFTCLOUD_TOKEN environment variable.  When no
+// endpoint or metro is supplied, the metro comes from the UKC_METRO
+// environment variable, and then the default metro of the platform API.
+func NewClient(opts ...Option) *Client {
+	o := options{
 		pluginName: PluginName,
+		userAgent:  DefaultUserAgent,
 		httpClient: &http.Client{Timeout: DefaultTimeout},
 	}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	if o.token == "" {
+		o.token = platform.TokenFromEnv()
+	}
+	if o.endpoint == "" && o.metro == "" {
+		o.metro = cmp.Or(platform.MetroFromEnv(), platform.DefaultMetro)
+	}
+	if o.metro != "" {
+		o.endpoint = platform.EndpointForMetro(o.metro)
+		o.metro = ""
+	}
+
+	return &Client{defaults: o}
 }
 
-// Option overrides part of a Client's configuration for a single API call.
+// Option overrides part of a Client's configuration, for every call when
+// given to NewClient, or for a single call when given to an operation.
 type Option func(*options)
 
 // options holds the per-call configuration resolved from the Client's
@@ -132,7 +109,8 @@ func WithEndpoint(endpoint string) Option {
 	return func(o *options) { o.endpoint = endpoint }
 }
 
-// WithMetro overrides the metro used to derive the API endpoint.
+// WithMetro overrides the metro used to derive the API endpoint.  A metro that
+// contains "://" is used as the endpoint.
 func WithMetro(metro string) Option {
 	return func(o *options) { o.metro = metro }
 }
@@ -160,6 +138,7 @@ func WithHTTPClient(httpClient *http.Client) Option {
 // WithHeader sets an additional header to send with the request.
 func WithHeader(key, value string) Option {
 	return func(o *options) {
+		o.headers = maps.Clone(o.headers)
 		if o.headers == nil {
 			o.headers = make(map[string]string)
 		}
@@ -167,26 +146,10 @@ func WithHeader(key, value string) Option {
 	}
 }
 
-// tokenFromEnv returns the first non-empty token found in the environment.
-func tokenFromEnv() string {
-	for _, key := range tokenEnvVars {
-		if v := os.Getenv(key); v != "" {
-			return v
-		}
-	}
-	return ""
-}
-
 // resolve merges the Client's configuration and the per-call Options into a
 // concrete per-call configuration, filling in defaults.
 func (c *Client) resolve(opts ...Option) options {
-	o := options{
-		endpoint:   c.endpoint,
-		token:      c.token,
-		pluginName: c.pluginName,
-		userAgent:  c.userAgent,
-		httpClient: c.httpClient,
-	}
+	o := c.defaults
 	for _, opt := range opts {
 		opt(&o)
 	}
@@ -211,16 +174,16 @@ func (c *Client) resolve(opts ...Option) options {
 
 // newRequest builds the HTTP request for a single plugin API call against the
 // instance's authenticated plugin endpoint.
-func newRequest(ctx context.Context, o options, instance platform.Instance, method, opPath string, body io.Reader, accept string) (*http.Request, error) {
+func newRequest(ctx context.Context, o options, instance Instance, method, opPath string, body io.Reader, accept string) (*http.Request, error) {
 	if o.endpoint == "" {
 		return nil, fmt.Errorf("could not determine the API endpoint: configure a metro or endpoint through NewClient's options, or use WithEndpoint or WithMetro")
 	}
-	if instance.Uuid == "" {
+	if instance == nil || instance.UUID() == "" {
 		return nil, fmt.Errorf("instance has no UUID; cannot address its plugin endpoint")
 	}
 
 	base := strings.TrimSuffix(o.endpoint, "/")
-	prefix := fmt.Sprintf("/v1/instances/%s/plugins/%s", instance.Uuid, o.pluginName)
+	prefix := fmt.Sprintf("/v1/instances/%s/plugins/%s", instance.UUID(), o.pluginName)
 
 	req, err := http.NewRequestWithContext(ctx, method, base+prefix+opPath, body)
 	if err != nil {
@@ -251,7 +214,7 @@ func newRequest(ctx context.Context, o options, instance platform.Instance, meth
 // The body is read in full and replaced with an equivalent in-memory reader, so
 // target.Raw() is still readable from its first byte and needs no Close from the
 // caller.  Streaming operations go through doStream instead.
-func doRequest[T any](ctx context.Context, c *Client, instance platform.Instance, method, opPath string, body io.Reader, target *Response[T], opts ...Option) error {
+func doRequest[T any](ctx context.Context, c *Client, instance Instance, method, opPath string, body io.Reader, target *Response[T], opts ...Option) error {
 	o := c.resolve(opts...)
 
 	req, err := newRequest(ctx, o, instance, method, opPath, body, "application/json")
@@ -277,7 +240,7 @@ func doRequest[T any](ctx context.Context, c *Client, instance platform.Instance
 // application/octet-stream.  The body is buffered into target and reachable
 // through RawBody and Raw, but never decoded, so a body that is not JSON is not
 // an error; target.Data stays nil.  Only the HTTP status is judged.
-func doRawRequest[T any](ctx context.Context, c *Client, instance platform.Instance, method, opPath, accept string, body io.Reader, target *Response[T], opts ...Option) error {
+func doRawRequest[T any](ctx context.Context, c *Client, instance Instance, method, opPath, accept string, body io.Reader, target *Response[T], opts ...Option) error {
 	o := c.resolve(opts...)
 
 	req, err := newRequest(ctx, o, instance, method, opPath, body, accept)
@@ -326,7 +289,7 @@ func receive[T any](resp *http.Response, target *Response[T]) ([]byte, error) {
 // A plugin that cannot start the stream answers with a JSON envelope instead,
 // which is decoded into target and returned as an error like any other failed
 // call.
-func doStream[T any](ctx context.Context, c *Client, instance platform.Instance, method, opPath string, body io.Reader, target *Response[T], opts ...Option) error {
+func doStream[T any](ctx context.Context, c *Client, instance Instance, method, opPath string, body io.Reader, target *Response[T], opts ...Option) error {
 	o := c.resolve(opts...)
 
 	req, err := newRequest(ctx, o, instance, method, opPath, body, "text/event-stream")
