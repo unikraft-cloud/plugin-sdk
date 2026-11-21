@@ -9,8 +9,6 @@ import (
 	"fmt"
 	"io"
 	"net/url"
-
-	"unikraft.com/cloud/sdk/platform"
 )
 
 // Ensure imports are used: a spec need not exercise every one of them, and a
@@ -22,7 +20,6 @@ var (
 	_ = fmt.Sprintf
 	_ io.Reader
 	_ = url.Values{}
-	_ platform.Instance
 )
 
 // CreateWidget
@@ -33,7 +30,7 @@ var (
 // It targets the widgets plugin running on the given instance,
 // reached through the instance's authenticated plugin endpoint
 // (<endpoint>/v1/instances/<uuid>/plugins/<plugin>).
-func (c *Client) CreateWidget(ctx context.Context, instance platform.Instance, body *CreateWidgetRequest, opts ...Option) (*Response[CreateWidgetResponseData], error) {
+func (c *Client) CreateWidget(ctx context.Context, instance Instance, body *CreateWidgetRequest, opts ...Option) (*Response[CreateWidgetResponseData], error) {
 	pathParams := map[string]string{}
 	opPath := buildPath("/widgets", pathParams)
 
@@ -66,7 +63,7 @@ func (c *Client) CreateWidget(ctx context.Context, instance platform.Instance, b
 // It targets the widgets plugin running on the given instance,
 // reached through the instance's authenticated plugin endpoint
 // (<endpoint>/v1/instances/<uuid>/plugins/<plugin>).
-func (c *Client) DeleteWidget(ctx context.Context, instance platform.Instance, id string, opts ...Option) (*Response[any], error) {
+func (c *Client) DeleteWidget(ctx context.Context, instance Instance, id string, opts ...Option) (*Response[any], error) {
 	pathParams := map[string]string{
 		"id": fmt.Sprintf("%v", id),
 	}
@@ -94,7 +91,7 @@ func (c *Client) DeleteWidget(ctx context.Context, instance platform.Instance, i
 // It targets the widgets plugin running on the given instance,
 // reached through the instance's authenticated plugin endpoint
 // (<endpoint>/v1/instances/<uuid>/plugins/<plugin>).
-func (c *Client) GetWidget(ctx context.Context, instance platform.Instance, id string, opts ...Option) (*Response[GetWidgetResponseData], error) {
+func (c *Client) GetWidget(ctx context.Context, instance Instance, id string, opts ...Option) (*Response[GetWidgetResponseData], error) {
 	pathParams := map[string]string{
 		"id": fmt.Sprintf("%v", id),
 	}
@@ -127,7 +124,7 @@ type ListWidgetsOpts struct {
 // It targets the widgets plugin running on the given instance,
 // reached through the instance's authenticated plugin endpoint
 // (<endpoint>/v1/instances/<uuid>/plugins/<plugin>).
-func (c *Client) ListWidgets(ctx context.Context, instance platform.Instance, params *ListWidgetsOpts, opts ...Option) (*Response[ListWidgetsResponseData], error) {
+func (c *Client) ListWidgets(ctx context.Context, instance Instance, params *ListWidgetsOpts, opts ...Option) (*Response[ListWidgetsResponseData], error) {
 	pathParams := map[string]string{}
 	opPath := buildPath("/widgets", pathParams)
 
@@ -158,7 +155,7 @@ func (c *Client) ListWidgets(ctx context.Context, instance platform.Instance, pa
 // It targets the widgets plugin running on the given instance,
 // reached through the instance's authenticated plugin endpoint
 // (<endpoint>/v1/instances/<uuid>/plugins/<plugin>).
-func (c *Client) WatchWidget(ctx context.Context, instance platform.Instance, id string, opts ...Option) (<-chan *Widget, error) {
+func (c *Client) WatchWidget(ctx context.Context, instance Instance, id string, opts ...Option) (<-chan *Widget, error) {
 	pathParams := map[string]string{
 		"id": fmt.Sprintf("%v", id),
 	}

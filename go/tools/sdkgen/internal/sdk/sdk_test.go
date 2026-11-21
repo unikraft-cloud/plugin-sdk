@@ -456,7 +456,7 @@ func TestRenderWebSocketOperation(t *testing.T) {
 	api := rendered(t, module, "api.gen.go")
 	for _, want := range []string{
 		`"` + sdk.WebsocketModule + `"`,
-		"func (c *Client) FollowCommand(ctx context.Context, instance platform.Instance, uuid string, params *FollowCommandOpts, opts ...Option) (*websocket.Conn, error)",
+		"func (c *Client) FollowCommand(ctx context.Context, instance Instance, uuid string, params *FollowCommandOpts, opts ...Option) (*websocket.Conn, error)",
 		"return doDial(ctx, c, instance, opPath, opts...)",
 	} {
 		if !strings.Contains(api, want) {
