@@ -5,7 +5,7 @@ go 1.27.4
 require (
 	github.com/alecthomas/kong v1.17.0
 	github.com/juju/errors v1.0.0
-	golang.org/x/mod v0.42.0
+	golang.org/x/mod v0.43.0
 	gopkg.in/yaml.v3 v3.0.1
 	unikraft.com/x/kingkong v0.0.0-20260813113709-544c471e0bc9
 	unikraft.com/x/log v0.0.0-20261116145447-f4dbf6ae0056
