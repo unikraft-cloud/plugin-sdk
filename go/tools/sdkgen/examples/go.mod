@@ -1,6 +1,6 @@
 module unikraft.com/cloud/pluginsdk/tools/sdkgen/examples
 
-go 1.27.3
+go 1.27.4
 
 require unikraft.com/cloud/sdk v0.3.1-0.20260805103859-eb7d6dc4c53c
 
